@@ -4,7 +4,7 @@ import base64
 
 app = Flask(__name__)
 print(f"name: {__name__}")
-ngrok.set_auth_token("2xK4s84bkpQ1Bk3p5LrWsvTzHcv_5rcNXXqBSUPVzrB3t5Nzs")
+ngrok.set_auth_token("본인 ngrok Authtoken") # 아마 토큰 없어도 8시간은 세션 유지되는걸로 암, https://ngrok.com/ 회원가입 후 토큰 입력시 무제한 세션 유지됨.
 public_url = ngrok.connect(5000)
 print(f" * ngrok URL: {public_url}")
 
