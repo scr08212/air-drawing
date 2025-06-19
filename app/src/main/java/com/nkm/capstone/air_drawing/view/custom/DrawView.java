@@ -15,17 +15,29 @@ import com.nkm.capstone.air_drawing.data.Stroke;
 import java.util.Vector;
 
 /**
- * DrawView: 센서로부터 전달받은 방향 정보(pitch, yaw)를 기반으로
- * 화면 중앙을 기준으로 포인터를 이동시키고, 터치 상태에 따라 경로를 그리는 사용자 정의 뷰입니다.
+ * DrawView: 센서 방향(pitch, yaw)에 따라 화면상 포인터를 이동시키고,
+ * 터치 입력과 연동하여 자유 곡선을 그릴 수 있는 사용자 정의 캔버스 뷰입니다.
  *
  * <br>
- * - 센서 데이터를 통해 curPoint 위치를 실시간으로 갱신합니다.
- * - 사용자가 화면을 터치하고 있는 동안만 포인터의 이동 경로를 저장하고 점을 연결합니다.
- * - 각 포인터 위치는 PointF로 저장되며, 나중에 선을 그리는 데 사용될 수 있습니다.
- * - 포인터는 터치 중일 경우 빨간색, 아닐 경우 파란색으로 표시됩니다.
+ * <b>주요 기능:</b>
+ * <ul>
+ *     <li>센서 방향에 따라 포인터 위치(curPoint)를 실시간 업데이트</li>
+ *     <li>터치 중일 때만 현재 포인터 위치를 Stroke에 저장</li>
+ *     <li>각 Stroke는 사용자의 한 번의 드로잉 궤적이며, 선으로 구성됨</li>
+ *     <li>완성된 Stroke 리스트는 Vector로 저장되어 Undo 및 전체 지우기 가능</li>
+ *     <li>터치 상태에 따라 포인터 색상(빨간색/파란색) 변화</li>
+ * </ul>
+ *
+ * <br>
+ * <b>공개 메서드:</b>
+ * <ul>
+ *     <li>{@code updateDirection(pitch, yaw)}: 센서 방향 반영</li>
+ *     <li>{@code EraseCanvas()}: 모든 Stroke 초기화</li>
+ *     <li>{@code UndoStroke()}: 마지막 Stroke 한 개 제거</li>
+ * </ul>
  *
  * @author 남경민
- * @since 2025.06.15
+ * @since 2025.06.20
  */
 
 public class DrawView extends View
@@ -75,8 +87,8 @@ public class DrawView extends View
     public void updateDirection(float pitch, float yaw)
     {
         float scale = 1000f;
-        curPoint.x = viewCenter.x +  (float) Math.tan(yaw) * scale;
-        curPoint.y = viewCenter.y + (float) Math.tan(pitch) * scale;
+        curPoint.x = viewCenter.x +  (float) Math.sin(yaw) * scale;
+        curPoint.y = viewCenter.y + (float) Math.sin(pitch) * scale;
         invalidate();
     }
 
