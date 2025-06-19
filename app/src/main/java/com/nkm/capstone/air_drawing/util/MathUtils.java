@@ -1,20 +1,25 @@
 package com.nkm.capstone.air_drawing.util;
 
 /**
- * MathUtils: 선형대수 및 기타 수학 계산과 관련된 유틸리티 함수들을 모아둔 클래스입니다.
+ * MathUtils: 선형대수 및 기타 수학 계산에 필요한 정적 유틸리티 메서드들을 제공하는 클래스입니다.
  *
  * <br>
- * - 모든 메서드는 static으로 선언되어 객체 생성 없이 바로 접근 가능합니다.
+ * - 모든 메서드는 static으로 선언되어 별도의 객체 생성 없이 직접 호출 가능합니다.
+ * - 3x3 행렬 연산 등 그래픽 처리나 센서 데이터 보정 등에 유용하게 사용할 수 있습니다.
  *
  * <p><b>사용 예시:</b></p>
  * <pre>{@code
  * float[] result = new float[9];
  * MathUtils.multiplyMatrices(matA, matB, result);
+ *
+ * float[] inverse = new float[9];
+ * MathUtils.invert3x3Matrix(matA, inverse);
  * }</pre>
  *
  * @author 남경민
- * @since 2025.06.15
+ * @since 2025.06.20
  */
+
 
 public class MathUtils
 {
@@ -39,12 +44,12 @@ public class MathUtils
         float a21 = a[3], a22 = a[4], a23 = a[5];
         float a31 = a[6], a32 = a[7], a33 = a[8];
 
-        float det =
-                a11 * (a22 * a33 - a23 * a32) -
+        float det = a11 * (a22 * a33 - a23 * a32) -
                         a12 * (a21 * a33 - a23 * a31) +
                         a13 * (a21 * a32 - a22 * a31);
 
-        if (Math.abs(det) < 1e-6f) {
+        if (Math.abs(det) < 1e-6f)
+        {
             throw new IllegalArgumentException("Matrix is singular and cannot be inverted.");
         }
 
