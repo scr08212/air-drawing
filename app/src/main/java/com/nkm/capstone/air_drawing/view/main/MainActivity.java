@@ -17,6 +17,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.nkm.capstone.air_drawing.KalmanFilter;
 import com.nkm.capstone.air_drawing.R;
+import com.nkm.capstone.air_drawing.data.DeltaTimer;
 import com.nkm.capstone.air_drawing.util.MathUtils;
 import com.nkm.capstone.air_drawing.view.custom.DrawView;
 
@@ -24,6 +25,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 {
     SensorManager sensorManager;
     Sensor rotationSensor;
+    DeltaTimer time;
 
     final float[] orientationAngles = new float[3];
     final float[] initialRotationMatrix = new float[9];
@@ -59,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        time = new DeltaTimer();
 
         btnReCalibrate.setOnClickListener(new View.OnClickListener()
         {
@@ -112,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     {
         if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)
         {
+            time.update();
             SensorManager.getRotationMatrixFromVector(currentRotationMatrix, event.values);
 
             if (!initialized)
