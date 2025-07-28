@@ -6,68 +6,34 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 
-import com.nkm.capstone.air_drawing.data.Stroke;
-
 import java.util.Vector;
 
-/**
- * DrawView: 센서 방향(pitch, yaw)에 따라 화면상 포인터를 이동시키고,
- * 터치 입력과 연동하여 자유 곡선을 그릴 수 있는 사용자 정의 캔버스 뷰입니다.
- *
- * <br>
- * <b>주요 기능:</b>
- * <ul>
- *     <li>센서 방향에 따라 포인터 위치(curPoint)를 실시간 업데이트</li>
- *     <li>터치 중일 때만 현재 포인터 위치를 Stroke에 저장</li>
- *     <li>각 Stroke는 사용자의 한 번의 드로잉 궤적이며, 선으로 구성됨</li>
- *     <li>완성된 Stroke 리스트는 Vector로 저장되어 Undo 및 전체 지우기 가능</li>
- *     <li>터치 상태에 따라 포인터 색상(빨간색/파란색) 변화</li>
- * </ul>
- *
- * <br>
- * <b>공개 메서드:</b>
- * <ul>
- *     <li>{@code updateDirection(pitch, yaw)}: 센서 방향 반영</li>
- *     <li>{@code EraseCanvas()}: 모든 Stroke 초기화</li>
- *     <li>{@code UndoStroke()}: 마지막 Stroke 한 개 제거</li>
- * </ul>
- *
- * @author 남경민
- * @since 2025.06.20
- */
-
-public class DrawView extends View
-{
+public class DrawView extends View {
     private Paint pointer;
     private Paint lineDrawer;
 
     private PointF viewCenter;
     private PointF curPoint;
 
-    private Stroke curStroke;
-    private Vector<Stroke> strokes;
+    private Vector<PointF> curStroke;
+    private Vector<Vector<PointF>> strokes;
 
     private boolean isTouching = false;
 
-
-    public DrawView(Context context)
-    {
+    public DrawView(Context context) {
         super(context);
         init();
     }
 
-    public DrawView(Context context, AttributeSet attrs)
-    {
+    public DrawView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
 
-    private void init()
-    {
+    private void init() {
         pointer = new Paint();
         pointer.setColor(Color.RED);
         pointer.setStyle(Paint.Style.FILL);
@@ -80,55 +46,49 @@ public class DrawView extends View
         viewCenter = new PointF();
         curPoint = new PointF();
 
-        curStroke = new Stroke();
+        curStroke = new Vector<>();
         strokes = new Vector<>();
     }
 
-    public void updateDirection(float pitch, float yaw)
-    {
+    public void updateDirection(float pitch, float yaw) {
         float scale = 1000f;
-        curPoint.x = viewCenter.x +  (float) Math.sin(yaw) * scale;
+        curPoint.x = viewCenter.x + (float) Math.sin(yaw) * scale;
         curPoint.y = viewCenter.y + (float) Math.sin(pitch) * scale;
         invalidate();
     }
 
     @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh)
-    {
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         viewCenter.x = w / 2f;
         viewCenter.y = h / 2f;
     }
 
     @Override
-    protected void onDraw(Canvas canvas)
-    {
+    protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.drawColor(Color.WHITE);
 
-        if(isTouching)
-        {
+        if (isTouching) {
             pointer.setColor(Color.RED);
-            curStroke.points.add(new PointF(curPoint.x, curPoint.y));
-        }
-        else
-        {
+            curStroke.add(new PointF(curPoint.x, curPoint.y));
+        } else {
             pointer.setColor(Color.BLUE);
         }
 
-        for(Stroke stroke: strokes)
-        {
-            for(Pair<PointF, PointF> line: stroke.lineSegments())
-            {
-                canvas.drawLine(line.first.x, line.first.y, line.second.x, line.second.y, lineDrawer);
+        for (var stroke : strokes) {
+            for (int i = 1; i < stroke.size(); i++) {
+                PointF from = stroke.get(i - 1);
+                PointF to = stroke.get(i);
+                canvas.drawLine(from.x, from.y, to.x, to.y, lineDrawer);
             }
         }
 
-        if (isTouching && curStroke.points.size() >= 2)
-        {
-            for (Pair<PointF, PointF> line : curStroke.lineSegments())
-            {
-                canvas.drawLine(line.first.x, line.first.y, line.second.x, line.second.y, lineDrawer);
+        if (isTouching && curStroke.size() >= 2) {
+            for (int i = 1; i < curStroke.size(); i++) {
+                PointF from = curStroke.get(i - 1);
+                PointF to = curStroke.get(i);
+                canvas.drawLine(from.x, from.y, to.x, to.y, lineDrawer);
             }
         }
 
@@ -136,21 +96,18 @@ public class DrawView extends View
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event)
-    {
-        switch(event.getAction())
-        {
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_MOVE:
                 isTouching = true;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                if(curStroke.points.size() >= 2)
-                {
-                    strokes.add(new Stroke(curStroke));
+                if (curStroke.size() >= 2) {
+                    strokes.add(new Vector<>(curStroke));
                 }
-                curStroke.points.clear();
+                curStroke.clear();
 
                 isTouching = false;
                 break;
@@ -159,16 +116,14 @@ public class DrawView extends View
         return true;
     }
 
-    public void EraseCanvas()
-    {
+    public void EraseCanvas() {
         strokes.clear();
-        curStroke.points.clear();
+        curStroke.clear();
         invalidate();
     }
 
-    public void UndoStroke()
-    {
-        if(!strokes.isEmpty())
+    public void UndoStroke() {
+        if (!strokes.isEmpty())
             strokes.removeElementAt(strokes.size() - 1);
     }
 }
