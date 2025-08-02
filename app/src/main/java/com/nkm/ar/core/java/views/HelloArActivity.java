@@ -103,8 +103,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
 
   private static final String TAG = HelloArActivity.class.getSimpleName();
 
-  private static final String SEARCHING_PLANE_MESSAGE = "Searching for surfaces...";
-  private static final String WAITING_FOR_TAP_MESSAGE = "Write a sentence in the air.";
+  private static final String SEARCHING_PLANE_MESSAGE = "카메라를 통해 특징점 찾는중...";
+  private static final String WAITING_FOR_TAP_MESSAGE = "공중에서 글씨를 써보세요.";
 
   // See the definition of updateSphericalHarmonicsCoefficients for an explanation of these
   // constants.
@@ -246,6 +246,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     recognizeButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
+        projectionCanvasView.setShowCursor(false);
+
         Bitmap bmp = projectionCanvasView.getBitmap();
         String tempImagePath = saveBitmapToCache(bmp);
         String imageB64 = encodeToBase64(bmp);
@@ -283,6 +285,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     setOriginButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
+        projectionCanvasView.setShowCursor(true);
         setOriginRequested = true;
 
         // UI 피드백 제공 (선택 사항)
@@ -366,25 +369,25 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         session = new Session(/* context= */ this);
       } catch (UnavailableArcoreNotInstalledException
           | UnavailableUserDeclinedInstallationException e) {
-        message = "Please install ARCore";
+        message = "ARCore를 설치해주세요";
         exception = e;
       } catch (UnavailableApkTooOldException e) {
-        message = "Please update ARCore";
+        message = "ARCore를 업데이트해주세요";
         exception = e;
       } catch (UnavailableSdkTooOldException e) {
-        message = "Please update this app";
+        message = "앱을 설치해주세요";
         exception = e;
       } catch (UnavailableDeviceNotCompatibleException e) {
-        message = "This device does not support AR";
+        message = "이 기기는 ARCore를 지원하지 않습니다";
         exception = e;
       } catch (Exception e) {
-        message = "Failed to create AR session";
+        message = "AR 세션을 만들지 못했습니다";
         exception = e;
       }
 
       if (message != null) {
         messageSnackbarHelper.showError(this, message);
-        Log.e(TAG, "Exception creating session", exception);
+        Log.e(TAG, "세션 생성중 에러 발생", exception);
         return;
       }
     }
@@ -400,7 +403,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       // https://developers.google.com/ar/develop/java/recording-and-playback
       session.resume();
     } catch (CameraNotAvailableException e) {
-      messageSnackbarHelper.showError(this, "Camera not available. Try restarting the app.");
+      messageSnackbarHelper.showError(this, "카메라 사용 불가, 앱을 재시작 해주세요.");
       session = null;
       return;
     }
@@ -427,7 +430,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     super.onRequestPermissionsResult(requestCode, permissions, results);
     if (!CameraPermissionHelper.hasCameraPermission(this)) {
       // Use toast instead of snackbar here since the activity will exit.
-      Toast.makeText(this, "Camera permission is needed to run this application", Toast.LENGTH_LONG)
+      Toast.makeText(this, "카메라 사용 권한이 필요합니다", Toast.LENGTH_LONG)
           .show();
       if (!CameraPermissionHelper.shouldShowRequestPermissionRationale(this)) {
         // Permission denied with checking "Do not ask again".
@@ -722,6 +725,19 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       runOnUiThread(() -> messageSnackbarHelper.showMessage(HelloArActivity.this, "기준점 설정 완료!"));
     }
 
+    if(origin != null){
+      float tx = pos.tx();
+      float ty = pos.ty();
+      float tz = pos.tz();
+
+      Vector<Point3F> temp = new Vector<>();
+      temp.add(new Point3F(tx, ty, tz));
+
+      var cursorPos = TestProjector.project(temp, origin, originDir, originRight);
+      if(!cursorPos.isEmpty())
+        projectionCanvasView.setCursorPos(cursorPos.get(0));
+    }
+
     if(isTouching && origin != null) {
       Point3F lastPoint = null;
       float distance = 1f;
@@ -789,19 +805,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   }
 
   private void updateSphericalHarmonicsCoefficients(float[] coefficients) {
-    // Pre-multiply the spherical harmonics coefficients before passing them to the shader. The
-    // constants in sphericalHarmonicFactors were derived from three terms:
-    //
-    // 1. The normalized spherical harmonics basis functions (y_lm)
-    //
-    // 2. The lambertian diffuse BRDF factor (1/pi)
-    //
-    // 3. A <cos> convolution. This is done to so that the resulting function outputs the irradiance
-    // of all incoming light over a hemisphere for a given surface normal, which is what the shader
-    // (environmental_hdr.frag) expects.
-    //
-    // You can read more details about the math here:
-    // https://google.github.io/filament/Filament.html#annex/sphericalharmonics
 
     if (coefficients.length != 9 * 3) {
       throw new IllegalArgumentException(

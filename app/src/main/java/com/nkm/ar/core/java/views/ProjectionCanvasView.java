@@ -21,6 +21,10 @@ public class ProjectionCanvasView extends View {
     private Vector<PointF> points;
     private Vector<Integer> breakPoints;
 
+    private PointF cursorPos = null;
+
+    private boolean showCursor = false;
+
     public ProjectionCanvasView(Context context) {
         super(context);
         Init();
@@ -40,6 +44,8 @@ public class ProjectionCanvasView extends View {
         lineDrawer.setColor(Color.BLACK);
         lineDrawer.setStrokeWidth(8f);
         lineDrawer.setAntiAlias(true);
+
+        cursorPos = new PointF(0,0);
     }
 
     @Override
@@ -92,6 +98,11 @@ public class ProjectionCanvasView extends View {
             PointF to = transformToCanvas(points.get(i), scale, centerX, centerY, dataCenterX, dataCenterY);
             canvas.drawLine(from.x, from.y, to.x, to.y, lineDrawer);
         }
+
+        if(cursorPos != null && showCursor) {
+            PointF canvasCursor = transformToCanvas(cursorPos, scale, centerX, centerY, dataCenterX, dataCenterY);
+            canvas.drawCircle(canvasCursor.x, canvasCursor.y, 8f, pointer);
+        }
     }
 
     private PointF transformToCanvas(PointF p, float scale, float centerX, float centerY, float dataCenterX, float dataCenterY) {
@@ -111,5 +122,16 @@ public class ProjectionCanvasView extends View {
         Canvas canvas = new Canvas(bitmap);
         draw(canvas);
         return bitmap;
+    }
+
+    public void setCursorPos(PointF pos){
+        cursorPos.x = pos.x;
+        cursorPos.y = pos.y;
+        invalidate();
+    }
+
+    public void setShowCursor(boolean value){
+        showCursor = value;
+        invalidate();
     }
 }
