@@ -36,19 +36,6 @@
       android:layout_height="match_parent"
       android:layout_gravity="bottom">
 
-    <com.nkm.ar.core.java.views.ProjectionCanvasView
-        android:id="@+id/projectionCanvasView"
-        android:layout_width="match_parent"
-        android:layout_height="581dp"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="10dp"
-        android:layout_marginTop="16dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.842"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/CL_bottom"/>
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/CL_bottom"
         android:layout_width="match_parent"
@@ -80,7 +67,7 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="4dp"
           android:layout_marginEnd="4dp"
-          android:text="set origin"
+          android:text="가상평면생성"
           app:layout_constraintEnd_toEndOf="parent"
           app:layout_constraintTop_toTopOf="parent" />
 
@@ -90,7 +77,7 @@
           android:layout_height="wrap_content"
           android:layout_marginStart="4dp"
           android:layout_marginTop="4dp"
-          android:text="Clear"
+          android:text="지우기"
           app:layout_constraintStart_toStartOf="parent"
           app:layout_constraintTop_toTopOf="parent" />
 
@@ -99,7 +86,7 @@
           android:layout_width="100dp"
           android:layout_height="wrap_content"
           android:layout_marginEnd="4dp"
-          android:text="Recognize"
+          android:text="OCR수행"
           app:layout_constraintEnd_toEndOf="parent"
           app:layout_constraintTop_toBottomOf="@+id/set_origin_button" />
 
@@ -108,10 +95,20 @@
           android:layout_width="100dp"
           android:layout_height="wrap_content"
           android:layout_marginStart="4dp"
-          android:text="export csv"
+          android:text="csv 내보내기"
           app:layout_constraintStart_toStartOf="parent"
           app:layout_constraintTop_toBottomOf="@+id/clear_button" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.nkm.ar.core.java.views.ProjectionCanvasView
+        android:id="@+id/projectionCanvasView"
+        android:layout_width="match_parent"
+        android:layout_height="581dp"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="10dp" />
 
   </androidx.constraintlayout.widget.ConstraintLayout>
 
