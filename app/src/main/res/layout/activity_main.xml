@@ -14,6 +14,8 @@
    limitations under the License.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -23,56 +25,94 @@
       android:layout_height="fill_parent"
       android:layout_gravity="top" />
 
-  <com.nkm.ar.core.java.views.ProjectionCanvasView
-      android:id="@+id/projectionCanvasView"
+  <View
+      android:id="@+id/view"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:background="@android:color/darker_gray" />
+
+  <androidx.constraintlayout.widget.ConstraintLayout
       android:layout_width="match_parent"
-      android:layout_height="fill_parent"
-      android:layout_below="@+id/surfaceview"
-      android:layout_alignParentBottom="true"
-      android:layout_marginTop="-1dp"
-      android:layout_marginBottom="0dp" />
+      android:layout_height="match_parent"
+      android:layout_gravity="bottom">
 
-  <TextView
-      android:id="@+id/posinfo_textview"
-      android:layout_width="100dp"
-      android:layout_height="80dp"
-      android:layout_alignParentStart="true"
-      android:layout_alignParentTop="true"
-      android:layout_marginStart="50dp"
-      android:layout_marginTop="50dp"
-      android:text="대기중"
-      android:textColor="@android:color/black" />
+    <com.nkm.ar.core.java.views.ProjectionCanvasView
+        android:id="@+id/projectionCanvasView"
+        android:layout_width="match_parent"
+        android:layout_height="581dp"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="10dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.842"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/CL_bottom"/>
 
-  <Button
-      android:id="@+id/saveCSV_button"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="50dp"
-      android:layout_marginTop="600dp"
-      android:text="export csv" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/CL_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/projectionCanvasView"
+        app:layout_constraintVertical_bias="0.0">
 
-  <Button
-      android:id="@+id/recognize_button"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="250dp"
-      android:layout_marginTop="600dp"
-      android:text="Recognize" />
+      <TextView
+          android:id="@+id/posinfo_textview"
+          android:layout_width="100dp"
+          android:layout_height="80dp"
+          android:layout_alignParentStart="true"
+          android:layout_alignParentTop="true"
+          android:text="대기중"
+          android:textColor="@android:color/black"
+          app:layout_constraintBottom_toBottomOf="parent"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.262" />
 
-  <Button
-      android:id="@+id/clear_button"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="250dp"
-      android:layout_marginTop="550dp"
-      android:text="Clear" />
+      <Button
+          android:id="@+id/set_origin_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:layout_marginEnd="4dp"
+          android:text="set origin"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
 
-  <Button
-      android:id="@+id/set_origin_button"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="250dp"
-      android:layout_marginTop="500dp"
-      android:text="set origin" />
+      <Button
+          android:id="@+id/clear_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="4dp"
+          android:layout_marginTop="4dp"
+          android:text="Clear"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
+
+      <Button
+          android:id="@+id/recognize_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="4dp"
+          android:text="Recognize"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintTop_toBottomOf="@+id/set_origin_button" />
+
+      <Button
+          android:id="@+id/saveCSV_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="4dp"
+          android:text="export csv"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toBottomOf="@+id/clear_button" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+  </androidx.constraintlayout.widget.ConstraintLayout>
 
 </FrameLayout>
