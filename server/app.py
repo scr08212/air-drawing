@@ -4,7 +4,6 @@ from pyngrok import ngrok
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from model import get_predictor
 
-
 predictor = get_predictor('paddleocr')
 
 app = Flask(__name__)
