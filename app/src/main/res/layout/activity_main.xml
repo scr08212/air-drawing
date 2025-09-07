@@ -1,0 +1,115 @@
+<!--
+   Copyright 2016 Google LLC
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+  <android.opengl.GLSurfaceView
+      android:id="@+id/surfaceview"
+      android:layout_width="fill_parent"
+      android:layout_height="fill_parent"
+      android:layout_gravity="top" />
+
+  <View
+      android:id="@+id/view"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:background="@android:color/darker_gray" />
+
+  <androidx.constraintlayout.widget.ConstraintLayout
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:layout_gravity="bottom">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/CL_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/projectionCanvasView"
+        app:layout_constraintVertical_bias="0.0">
+
+      <TextView
+          android:id="@+id/posinfo_textview"
+          android:layout_width="100dp"
+          android:layout_height="80dp"
+          android:layout_alignParentStart="true"
+          android:layout_alignParentTop="true"
+          android:text="대기중"
+          android:textColor="@android:color/black"
+          app:layout_constraintBottom_toBottomOf="parent"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.262" />
+
+      <Button
+          android:id="@+id/set_origin_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:layout_marginEnd="4dp"
+          android:text="가상평면생성"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
+
+      <Button
+          android:id="@+id/clear_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="4dp"
+          android:layout_marginTop="4dp"
+          android:text="지우기"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
+
+      <Button
+          android:id="@+id/recognize_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="4dp"
+          android:text="OCR수행"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintTop_toBottomOf="@+id/set_origin_button" />
+
+      <Button
+          android:id="@+id/saveCSV_button"
+          android:layout_width="100dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="4dp"
+          android:text="csv 내보내기"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toBottomOf="@+id/clear_button" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.nkm.ar.core.java.views.ProjectionCanvasView
+        android:id="@+id/projectionCanvasView"
+        android:layout_width="match_parent"
+        android:layout_height="581dp"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="10dp" />
+
+  </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>
