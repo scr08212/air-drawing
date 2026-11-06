@@ -60,7 +60,20 @@ def main():
     print("PaddleOCR version:", getattr(paddleocr, "__version__", "unknown"), flush=True)
     payload = sample_png()
     started = time.monotonic()
-    result = get_predictor("paddleocr")(payload)
+    try:
+        result = get_predictor("paddleocr")(payload)
+    except Exception:
+        # Diagnostics only: this test processes synthetic image data and has
+        # no credentials, so show the underlying PaddleOCR initialization error.
+        from paddleocr import PaddleOCR
+        print("DIAGNOSTIC: initializing PaddleOCR directly...", flush=True)
+        PaddleOCR(
+            lang="en", device="cpu",
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+        )
+        raise
     duration = round(time.monotonic() - started, 2)
     recognized = result.get("message", "")
     normalized = re.sub(r"[^A-Z0-9]", "", recognized.upper())
