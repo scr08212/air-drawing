@@ -21,6 +21,7 @@ def backend(monkeypatch):
     predictor = Mock(return_value={"success": True, "message": "DEMO", "error": ""})
 
     model_stub = types.ModuleType("model")
+    model_stub.__path__ = [str(APP_PATH.parents[1] / "model")]
     model_stub.get_predictor = Mock(return_value=predictor)
     monkeypatch.setitem(sys.modules, "model", model_stub)
 
@@ -92,3 +93,48 @@ def test_sensitive_ocr_text_and_image_are_not_logged(backend, caplog):
     assert sensitive_text not in caplog.text
     assert sensitive_image not in caplog.text
     assert "OCR request completed: success=True" in caplog.text
+
+
+def test_non_string_image_returns_400(backend):
+    client, predictor, _ = backend
+    response = client.post("/predict_image", json={"image_base64": 123})
+    assert response.status_code == 400
+    predictor.assert_not_called()
+
+
+def test_expected_image_failure_returns_safe_status(backend):
+    from model.errors import InvalidImageError, ImageTooLargeError, OCRUnavailableError
+
+    client, predictor, _ = backend
+    for exception_type, status in (
+        (InvalidImageError, 400),
+        (ImageTooLargeError, 413),
+        (OCRUnavailableError, 503),
+    ):
+        predictor.side_effect = exception_type()
+        response = client.post("/predict_image", json={"image_base64": "base64-placeholder"})
+        assert response.status_code == status
+        assert response.get_json()["success"] is False
+        assert "Traceback" not in response.get_data(as_text=True)
+
+
+def test_unexpected_exception_is_not_disclosed(backend, caplog):
+    client, predictor, app = backend
+    sensitive_error = "SECRET_INTERNAL_FILE_PATH"
+    predictor.side_effect = RuntimeError(sensitive_error)
+    with caplog.at_level(logging.INFO, logger=app.logger.name):
+        response = client.post("/predict_image", json={"image_base64": "base64-placeholder"})
+    assert response.status_code == 500
+    assert sensitive_error not in response.get_data(as_text=True)
+    assert sensitive_error not in caplog.text
+
+
+def test_request_body_size_is_limited(backend):
+    client, predictor, _ = backend
+    response = client.post(
+        "/predict_image",
+        data=b"x" * (8 * 1024 * 1024 + 1),
+        content_type="application/json",
+    )
+    assert response.status_code == 413
+    predictor.assert_not_called()
