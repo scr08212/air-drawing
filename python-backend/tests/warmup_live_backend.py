@@ -31,7 +31,14 @@ def main():
                 recognized = "".join(c for c in payload.get("message", "").upper() if c.isalnum())
                 if recognized != EXPECTED:
                     raise RuntimeError("Flask OCR did not recognize the synthetic input")
-                print("Live Flask+PaddleOCR warmup: PASS", flush=True)
+                print("First live Flask+PaddleOCR request: PASS", flush=True)
+                # Detect predictor reuse failures before the Android emulator request.
+                with urlopen(request, timeout=150) as repeated_response:
+                    repeated = json.loads(repeated_response.read())
+                    repeated_text = "".join(c for c in repeated.get("message", "").upper() if c.isalnum())
+                    if repeated_response.status != 200 or repeated_text != EXPECTED:
+                        raise RuntimeError("Second Flask OCR request returned an unexpected result")
+                print("Repeated live Flask+PaddleOCR request: PASS", flush=True)
                 return
         except URLError as error:
             if isinstance(error, HTTPError):
