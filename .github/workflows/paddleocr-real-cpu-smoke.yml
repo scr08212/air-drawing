@@ -1,0 +1,75 @@
+name: Real PaddleOCR CPU smoke test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/paddleocr-real-cpu-smoke.yml"
+      - "python-backend/tests/smoke_real_paddleocr.py"
+      - "python-backend/model/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  real-ocr:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      OCR_DEVICE: cpu
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real PaddlePaddle and PaddleOCR
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir \
+            "paddlepaddle==3.1.0" \
+            "paddleocr==3.1.0" \
+            "paddlex==3.1.1" \
+            "langchain==0.3.26" \
+            "langchain-community==0.3.27" \
+            "langchain-core==0.3.67" \
+            "langchain-openai==0.3.27" \
+            "numpy==2.2.6" \
+            "pillow==11.2.1"
+          python -m pip check
+      - name: Run actual PaddleOCR inference on generated image
+        run: python python-backend/tests/smoke_real_paddleocr.py
+      - name: Upload synthetic sample and OCR result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-paddleocr-cpu-smoke
+          path: ci-artifacts/
+          if-no-files-found: ignore
+      - name: Post real inference result to PR
+        if: ${{ success() && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          result = json.loads(Path("ci-artifacts/result.json").read_text(encoding="utf-8"))
+          content = (
+              "### Real PaddleOCR CPU smoke test: PASS\\n\\n"
+              + f"- PaddlePaddle: `{result['paddle_version']}`\\n"
+              + f"- PaddleOCR: `{result['paddleocr_version']}`\\n"
+              + f"- Sample text: `{result['sample_text']}`\\n"
+              + f"- Actual recognition: `{result['recognized_text']}`\\n"
+              + f"- Similarity: `{result['similarity']}`\\n"
+              + f"- CPU inference (initialization included): `{result['cpu_inference_elapsed_seconds']} seconds`\\n\\n"
+              + "Uses the project’s real `model.paddleOCR.predict_image` and downloads actual model weights. "
+              + "No private image data or credentials are used.\\n\\n"
+              + f"[CI run](https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']})"
+          )
+          Path("ci-artifacts/comment.md").write_text(content.replace("\\n", "\n"), encoding="utf-8")
+          PY
+          gh pr comment "$PR_NUMBER" --body-file ci-artifacts/comment.md
