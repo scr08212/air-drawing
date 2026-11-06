@@ -30,6 +30,8 @@ jobs:
         with:
           python-version: "3.11"
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android compile SDK
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
       - name: Enable emulator KVM
