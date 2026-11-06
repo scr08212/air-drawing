@@ -80,9 +80,8 @@ jobs:
             mkdir -p ci-artifacts
             ( env RUNNER_TRACKING_ID="" OCR_DEVICE=cpu OMP_NUM_THREADS=1 python -u python-backend/server/app.py > ci-artifacts/flask.log 2>&1 & )
             python python-backend/tests/warmup_live_backend.py
-            cd android-app
-            chmod +x ./gradlew
-            ./gradlew --no-daemon connectedDebugAndroidTest -PocrBaseUrl=http://10.0.2.2:5000/
+            chmod +x android-app/gradlew
+            ./android-app/gradlew --no-daemon -p android-app connectedDebugAndroidTest -PocrBaseUrl=http://10.0.2.2:5000/
       - name: Upload instrumentation test and synthetic OCR evidence
         if: always()
         uses: actions/upload-artifact@v4
