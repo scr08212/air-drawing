@@ -48,7 +48,7 @@ import com.google.ar.core.Trackable;
 import com.google.ar.core.TrackingFailureReason;
 import com.google.ar.core.TrackingState;
 import com.nkm.ar.core.java.network.OcrResponse;
-import com.nkm.ar.core.java.network.RetrofitClient;
+import com.nkm.ar.core.java.network.OcrRequestFlow;
 import com.nkm.ar.core.java.utils.CsvPointSaver;
 import com.nkm.ar.core.java.datatypes.Point3F;
 import com.nkm.ar.core.java.utils.helpers.CameraPermissionHelper;
@@ -252,23 +252,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         String tempImagePath = saveBitmapToCache(bmp);
         String imageB64 = encodeToBase64(bmp);
 
-        RetrofitClient.getInstance()
-                .predictImage(Collections.singletonMap("image_base64", imageB64))
-                .enqueue(new Callback<OcrResponse>() {
-                  @Override
-                  public void onResponse(Call<OcrResponse> call, Response<OcrResponse> resp) {
-                    String result = "인식 실패";
-                    if (resp.isSuccessful() && resp.body() != null && resp.body().success) {
-                      result = resp.body().message;
-                    }
-                    openResultActivity(result, tempImagePath);
-                  }
-
-                  @Override
-                  public void onFailure(Call<OcrResponse> call, Throwable t) {
-                    openResultActivity("네트워크 오류", tempImagePath);
-                  }
-                });
+        OcrRequestFlow.recognizeAndShow(HelloArActivity.this, imageB64, tempImagePath);
       }
     });
 
@@ -857,12 +841,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
   }
 
-  private void openResultActivity(String recognizedText, String imagePath) {
-    Intent intent = new Intent(HelloArActivity.this, ResultActivity.class);
-    intent.putExtra("result_char", recognizedText);
-    intent.putExtra("image_path", imagePath);
-    startActivity(intent);
-  }
 }
 
 /**
