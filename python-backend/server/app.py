@@ -44,7 +44,8 @@ if __name__ == '__main__':
             ngrok.set_auth_token(authtoken)
         ngrok.connect(5000)
         app.logger.info('ngrok tunnel started')
-    app.run(host='0.0.0.0', port=5000)
+    # The shared PaddleOCR predictor is not used concurrently in this demo server.
+    app.run(host='0.0.0.0', port=5000, threaded=False)
 
 @app.errorhandler(413)
 def payload_too_large(_error):
