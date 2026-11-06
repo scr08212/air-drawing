@@ -1,0 +1,93 @@
+name: Android Flask PaddleOCR E2E
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/android-flask-e2e.yml"
+      - "android-app/**"
+      - "python-backend/server/**"
+      - "python-backend/model/**"
+      - "python-backend/tests/warmup_live_backend.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-flask-paddleocr:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      OCR_DEVICE: cpu
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android compile SDK
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Enable emulator KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Install real CPU OCR service dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir \
+            "Flask==3.1.1" \
+            "pyngrok==7.2.9" \
+            "paddlepaddle==3.1.0" \
+            "paddleocr==3.1.0" \
+            "paddlex==3.1.1" \
+            "langchain==0.3.26" \
+            "langchain-community==0.3.27" \
+            "langchain-core==0.3.67" \
+            "langchain-openai==0.3.27" \
+            "numpy==2.2.6" \
+            "pillow==11.2.1"
+          python -m pip check
+      - name: Generate non-sensitive identical Android and backend fixture
+        run: |
+          python - <<'PY'
+          import runpy
+          import shutil
+          from pathlib import Path
+          smoke = runpy.run_path("python-backend/tests/smoke_real_paddleocr.py")
+          smoke["sample_png"]()
+          dest = Path("android-app/app/src/androidTest/assets/ocr_sample.png")
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile("ci-artifacts/sample.png", dest)
+          print("Created generated HELLO 123 fixture for both endpoints")
+          PY
+      - name: Run live Android -> Flask -> PaddleOCR -> UI instrumentation test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            mkdir -p ci-artifacts
+            ( env RUNNER_TRACKING_ID="" OCR_DEVICE=cpu OMP_NUM_THREADS=1 python -u python-backend/server/app.py > ci-artifacts/flask.log 2>&1 & )
+            python python-backend/tests/warmup_live_backend.py
+            cd android-app
+            chmod +x ./gradlew
+            ./gradlew --no-daemon connectedDebugAndroidTest -PocrBaseUrl=http://10.0.2.2:5000/
+      - name: Upload instrumentation test and synthetic OCR evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-flask-paddleocr-e2e
+          path: |
+            ci-artifacts/
+            android-app/app/build/outputs/androidTest-results/
+            android-app/app/build/reports/androidTests/
+          if-no-files-found: ignore
