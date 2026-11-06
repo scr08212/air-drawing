@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 25
     env:
       OCR_DEVICE: cpu
-      OMP_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,6 +30,7 @@ jobs:
           python -m pip install --no-cache-dir \
             "paddlepaddle==3.1.0" \
             "paddleocr==3.1.0" \
+            "paddlex==3.1.1" \
             "numpy==2.2.6" \
             "pillow==11.2.1"
           python -m pip check
