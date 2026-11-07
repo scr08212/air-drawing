@@ -12,12 +12,14 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 
 import java.util.Arrays;
 import java.util.Vector;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 34)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class ProjectionCanvasViewTest {
     private static final int CANVAS_SIZE = 200;
 
