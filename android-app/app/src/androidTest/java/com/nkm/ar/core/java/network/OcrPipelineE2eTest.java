@@ -71,7 +71,7 @@ public class OcrPipelineE2eTest {
         hostIntent.putExtra("result_char", "PENDING");
 
         try (ActivityScenario<ResultActivity> scenario = ActivityScenario.launch(hostIntent)) {
-            // This is the same production network+navigation code used in HelloArActivity.
+            // This is the same production network+navigation code used in AirWritingActivity.
             scenario.onActivity(activity ->
                     OcrRequestFlow.recognizeAndShow(
                             activity, base64Image, cacheImage.getAbsolutePath()));
