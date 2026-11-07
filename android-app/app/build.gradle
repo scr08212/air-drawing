@@ -15,6 +15,39 @@
  */
 apply plugin: 'com.android.application'
 
+// Endpoints are public routing information, not credentials. Configure them
+// explicitly per build type; never embed an expired or user-specific tunnel URL.
+def configuredEndpoint = { String propertyName, String envName, String buildType ->
+    def supplied = project.findProperty(propertyName)
+    if (supplied == null) {
+        supplied = System.getenv(envName)
+    }
+    String value = (supplied == null ? '' : supplied.toString()).trim()
+    if (value.isEmpty()) {
+        return ''
+    }
+
+    URI url
+    try {
+        url = new URI(value)
+    } catch (java.net.URISyntaxException ex) {
+        throw new GradleException("${propertyName}: invalid OCR URL")
+    }
+
+    String scheme = url.scheme == null ? '' : url.scheme.toLowerCase(java.util.Locale.ROOT)
+    boolean permitted = scheme == 'https' || (buildType == 'debug' && scheme == 'http')
+    if (!permitted || url.host == null || url.host.isEmpty()
+            || url.rawUserInfo != null || url.rawQuery != null || url.rawFragment != null
+            || (url.rawPath != null && url.rawPath != '' && url.rawPath != '/')
+            || !value.endsWith('/')) {
+        throw new GradleException("${propertyName}: use a valid ${buildType == 'release' ? 'HTTPS' : 'HTTP(S)'} server root URL ending in /, without credentials, path, query or fragment")
+    }
+    return value
+}
+
+def debugOcrUrl = configuredEndpoint('ocrDebugBaseUrl', 'OCR_DEBUG_BASE_URL', 'debug')
+def releaseOcrUrl = configuredEndpoint('ocrReleaseBaseUrl', 'OCR_RELEASE_BASE_URL', 'release')
+
 android {
     namespace "com.nkm.ar.core.java.views.helloar"
     compileSdkVersion 36
@@ -28,12 +61,6 @@ android {
         versionCode 1
         versionName '1.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        def ocrUrl = (project.findProperty('ocrBaseUrl') ?: 'https://e0e4875f5396.ngrok-free.app/').toString()
-        if (!ocrUrl.endsWith('/')) {
-            throw new GradleException('ocrBaseUrl must end with a trailing slash')
-        }
-        buildConfigField 'String', 'OCR_BASE_URL', "${'"'}${ocrUrl}${'"'}"
-
     }
     buildFeatures {
         buildConfig true
@@ -43,7 +70,12 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildTypes {
+        debug {
+            buildConfigField 'String', 'OCR_BASE_URL', groovy.json.JsonOutput.toJson(debugOcrUrl)
+        }
         release {
+            // Release builds never accept an HTTP endpoint.
+            buildConfigField 'String', 'OCR_BASE_URL', groovy.json.JsonOutput.toJson(releaseOcrUrl)
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
