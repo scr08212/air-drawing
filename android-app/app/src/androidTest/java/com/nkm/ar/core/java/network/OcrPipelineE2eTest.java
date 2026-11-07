@@ -30,19 +30,27 @@ import java.io.InputStream;
 
 /**
  * Live emulator -> host Flask -> real PaddleOCR -> ResultActivity UI.
- * Input comes from a generated synthetic PNG: ARCore camera tracking is not tested.
+ * Inputs are synthetic and paper-extracted projected handwriting PNGs. ARCore tracking itself is not tested.
  */
 @RunWith(AndroidJUnit4.class)
 public class OcrPipelineE2eTest {
-    private static final String EXPECTED = "HELLO 123";
+    @Test
+    public void syntheticImageAppearsAsRecognizedTextOnResultScreen() throws Exception {
+        verifyPipeline("ocr_sample.png", "HELLO 123");
+    }
 
     @Test
-    public void sampleImageAppearsAsRecognizedTextOnResultScreen() throws Exception {
+    public void paperHandwritingAppearsAsRecognizedTextOnResultScreen() throws Exception {
+        // The original projected handwriting from page 6 / Figure 6.
+        verifyPipeline("paper_hello.png", "hello");
+    }
+
+    private void verifyPipeline(String assetName, String expected) throws Exception {
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (InputStream input = testContext.getAssets().open("ocr_sample.png")) {
+        try (InputStream input = testContext.getAssets().open(assetName)) {
             byte[] chunk = new byte[4096];
             int count;
             while ((count = input.read(chunk)) != -1) {
@@ -52,7 +60,7 @@ public class OcrPipelineE2eTest {
         byte[] pngBytes = buffer.toByteArray();
         String base64Image = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
 
-        File cacheImage = new File(appContext.getCacheDir(), "e2e-ocr-sample.png");
+        File cacheImage = new File(appContext.getCacheDir(), "e2e-" + assetName);
         try (FileOutputStream file = new FileOutputStream(cacheImage)) {
             file.write(pngBytes);
         }
@@ -71,7 +79,7 @@ public class OcrPipelineE2eTest {
             boolean recognized = false;
             while (SystemClock.elapsedRealtime() < deadline) {
                 try {
-                    onView(withId(R.id.textResult)).check(matches(withText(EXPECTED)));
+                    onView(withId(R.id.textResult)).check(matches(withText(expected)));
                     recognized = true;
                     break;
                 } catch (AssertionError | RuntimeException notYetReady) {
@@ -79,14 +87,14 @@ public class OcrPipelineE2eTest {
                 }
             }
             if (!recognized) {
-                fail("Android did not display real Flask/PaddleOCR result: " + EXPECTED);
+                fail("Android did not display real Flask/PaddleOCR result: " + expected);
             }
             onView(withId(R.id.imagePreview)).check((view, error) -> {
                 if (error != null) throw error;
                 assertNotNull("The submitted image should be visible", ((ImageView) view).getDrawable());
             });
         } finally {
-            // Synthetic-only test fixture; avoid leaving the image cached on the device.
+            // Avoid leaving even test image bytes in the device cache.
             cacheImage.delete();
         }
     }
