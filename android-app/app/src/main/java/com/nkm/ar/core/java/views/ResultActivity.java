@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.nkm.ar.core.java.utils.OcrPreviewCache;
+import com.nkm.ar.core.java.utils.OcrPrivacyCleanup;
 import com.nkm.ar.core.java.views.helloar.R;
 
 /**
@@ -26,8 +27,7 @@ public class ResultActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        removeLegacyStoredResults();
-        OcrPreviewCache.clearLegacyPreview(this);
+        OcrPrivacyCleanup.clearLegacyResults(this);
 
         setContentView(R.layout.activity_result);
         textResult = findViewById(R.id.textResult);
@@ -52,17 +52,4 @@ public class ResultActivity extends AppCompatActivity {
         }
     }
 
-    private void removeLegacyStoredResults() {
-        // Older builds saved every OCR result keyed by an image filename.
-        getSharedPreferences("RecognizedTextPrefs", MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply();
-
-        // Preserve unrelated app settings from the old general preferences.
-        getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-                .edit()
-                .remove("last_recognized_text")
-                .apply();
-    }
 }
