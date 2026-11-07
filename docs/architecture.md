@@ -76,7 +76,7 @@ Vector3D q = rotation.applyTo(point.subtract(originVec));
 return new PointF((float) q.getX(), (float) q.getY());
 ```
 
-Apache Commons Math의 회전 생성자에 넘기는 **벡터 순서, 축 부호 및 회전 방향**이 최종 시각 결과를 결정합니다. 논문 수식을 코드에 적용할 때 이를 단순한 `Rᵀ`로 바꾸어 적지 않습니다. 특히 좌표계 방향을 검증하는 독립 단위 테스트는 현재 확인되지 않았습니다.
+Apache Commons Math의 회전 생성자에 넘기는 **벡터 순서, 축 부호 및 회전 방향**이 최종 시각 결과를 결정합니다. 논문 수식을 코드에 적용할 때 이를 단순한 `Rᵀ`로 바꾸어 적지 않습니다. 단위 테스트는 생성자의 축 매핑, 원점 이동 및 XY 투영 동작을 확인합니다([투영 단위 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/utils/projectors/TestProjectorTest.java)). 다만 월드↔카메라 좌표계 방향 및 실제 필기 반전 방지에 대한 실기기 검증과는 구분합니다.
 
 ### 2.3 2D 화면 렌더링과 이미지 생성
 

@@ -56,8 +56,8 @@ public class ProjectionCanvasView extends View {
         if (points == null || points.isEmpty()) return;
 
         // 1. 데이터의 최소/최대값 계산
-        float minX = Float.MAX_VALUE, maxX = Float.MIN_VALUE;
-        float minY = Float.MAX_VALUE, maxY = Float.MIN_VALUE;
+        float minX = Float.POSITIVE_INFINITY, maxX = Float.NEGATIVE_INFINITY;
+        float minY = Float.POSITIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY;
         for (PointF p : points) {
             minX = Math.min(minX, p.x);
             maxX = Math.max(maxX, p.x);
@@ -67,10 +67,9 @@ public class ProjectionCanvasView extends View {
 
         float dataWidth = maxX - minX;
         float dataHeight = maxY - minY;
-        if (dataWidth == 0 || dataHeight == 0) return;
-
         int canvasWidth = getWidth();
         int canvasHeight = getHeight();
+        if (canvasWidth <= 0 || canvasHeight <= 0) return;
 
         float centerX = canvasWidth / 2f;
         float centerY = canvasHeight / 2f;
@@ -79,24 +78,32 @@ public class ProjectionCanvasView extends View {
         float dataCenterY = (minY + maxY) / 2f;
 
         // 2. X/Y 비율 고정된 스케일
-        float scaleX = canvasWidth / dataWidth;
-        float scaleY = canvasHeight / dataHeight;
-        float scale = 0.6f * Math.min(scaleX, scaleY); // 여백 확보
+        // Zero-width/height strokes still need the scale of the nonzero axis.
+        float scaleX = dataWidth == 0f ? Float.POSITIVE_INFINITY : canvasWidth / dataWidth;
+        float scaleY = dataHeight == 0f ? Float.POSITIVE_INFINITY : canvasHeight / dataHeight;
+        float scale = (dataWidth == 0f && dataHeight == 0f)
+                ? 1f : 0.6f * Math.min(scaleX, scaleY); // 여백 확보
 
         // 3. 그리기
         int breakIndexPointer = 0;
         int nextBreakIndex = (breakPoints != null && breakPoints.size() > 0) ? breakPoints.get(0) : -1;
 
-        for (int i = 1; i < points.size(); i++) {
-            if (i == nextBreakIndex) {
-                breakIndexPointer++;
-                nextBreakIndex = (breakIndexPointer < breakPoints.size()) ? breakPoints.get(breakIndexPointer) : -1;
-                continue;
-            }
+        // A single point (or coincident points) is a valid stationary stroke.
+        if (dataWidth == 0f && dataHeight == 0f) {
+            PointF center = transformToCanvas(points.get(0), scale, centerX, centerY, dataCenterX, dataCenterY);
+            canvas.drawCircle(center.x, center.y, lineDrawer.getStrokeWidth() / 2f, lineDrawer);
+        } else {
+            for (int i = 1; i < points.size(); i++) {
+                if (i == nextBreakIndex) {
+                    breakIndexPointer++;
+                    nextBreakIndex = (breakIndexPointer < breakPoints.size()) ? breakPoints.get(breakIndexPointer) : -1;
+                    continue;
+                }
 
-            PointF from = transformToCanvas(points.get(i - 1), scale, centerX, centerY, dataCenterX, dataCenterY);
-            PointF to = transformToCanvas(points.get(i), scale, centerX, centerY, dataCenterX, dataCenterY);
-            canvas.drawLine(from.x, from.y, to.x, to.y, lineDrawer);
+                PointF from = transformToCanvas(points.get(i - 1), scale, centerX, centerY, dataCenterX, dataCenterY);
+                PointF to = transformToCanvas(points.get(i), scale, centerX, centerY, dataCenterX, dataCenterY);
+                canvas.drawLine(from.x, from.y, to.x, to.y, lineDrawer);
+            }
         }
 
         if(cursorPos != null && showCursor) {
