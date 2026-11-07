@@ -1,99 +1,104 @@
-# Architecture — Air Drawing
+# Architecture | Air Drawing
 
-> 이 문서는 **2026-11-07 기준 저장소 `main`의 구현과 GitHub Actions 검증 범위**를 설명합니다. 논문에서 제시한 개념과 실제 코드의 동작이 다른 경우 **코드를 우선**합니다. 공개 클라우드 배포 아키텍처를 설명하는 문서가 아닙니다.
+> **문서 목적:** 현재 저장소의 실제 구현을 기준으로 Android 공중 필기 → 2D 이미지 → Flask/PaddleOCR 인식 흐름을 설명합니다. 개발 당시의 설계 변경 이력은 별도로 표시합니다.
 
-## 1. 시스템의 역할과 경계
+## 1. 시스템 개요
 
-Air Drawing은 **스마트폰을 공중에서 움직여 기록한 ARCore 카메라 Pose(위치·자세)**를 2D 필기 이미지로 변환하고, Python Flask 서버의 PaddleOCR가 인식한 텍스트를 Android 화면에 표시하는 시스템입니다. 손가락 끝의 3D 위치를 별도의 비전 모델로 추적하는 구성은 아닙니다. 화면 터치 상태는 궤적 기록 구간과 획 분리에 사용됩니다.
+Air Drawing은 **스마트폰 자체를 공중에서 움직여 얻은 ARCore 카메라 Pose**를 사용합니다. 손가락 끝을 별도로 인식하는 시스템이 아니며, 화면 터치는 **필기 기록 중인지와 획의 시작·종료**를 제어합니다.
 
 ```mermaid
-flowchart TD
-    subgraph ANDROID["Android · Java · ARCore"]
-        A["ARCore Camera Pose<br/>위치 및 축 방향"] --> B["기준 자세 설정 및<br/>3D 궤적 수집"]
-        B --> C["TestProjector<br/>평행이동 · 회전 · XY 투영"]
-        C --> D["ProjectionCanvasView<br/>획 그리기 → PNG Bitmap"]
-        D --> E["Base64 변환<br/>Retrofit / OcrRequestFlow"]
+flowchart LR
+    subgraph Mobile["Android 앱"]
+        A["ARCore<br/>카메라 Pose"] --> B["기준 위치·방향 /<br/>3D 점·획 경계 수집"]
+        B --> C["TestProjector<br/>회전·XY 투영"]
+        C --> D["ProjectionCanvasView<br/>2D 렌더링 / Bitmap"]
+        D --> E["Base64 / Retrofit"]
     end
-
-    E -->|"HTTP(S) POST /predict_image · JSON"| F
-    subgraph SERVER["Python · Flask · PaddleOCR"]
-        F["Flask API<br/>JSON · 이미지 유효성 확인"] --> G["이미지 전처리<br/>검정 픽셀 기준 크롭 · 패딩 · 384×384"]
-        G --> H["PaddleOCR 영어 모델<br/>문자열 추출"]
-        H --> I["JSON 응답<br/>success / message / error"]
+    subgraph Backend["Python OCR 서버"]
+        F["Flask<br/>POST /predict_image"] --> G["입력 검증<br/>크롭·정규화"]
+        G --> H["PaddleOCR<br/>영문 텍스트"]
     end
-    I -->|"JSON 응답"| J["Android ResultActivity<br/>인식 텍스트 + 이미지 미리보기"]
+    E -->|"HTTP(S), JSON"| F
+    H -->|"JSON 응답"| I["Android<br/>ResultActivity"]
 ```
 
-- **Android:** [`HelloArActivity.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/views/HelloArActivity.java), [`TestProjector.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java), [`ProjectionCanvasView.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java)
-- **통신:** [`OcrRequestFlow.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/network/OcrRequestFlow.java), [`RetrofitClient.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/network/RetrofitClient.java)
-- **서버:** [`app.py`](../python-backend/server/app.py), [`paddleOCR.py`](../python-backend/model/paddleOCR.py), [`utils.py`](../python-backend/model/utils.py)
+| 모듈 | 역할 | 코드 |
+| --- | --- | --- |
+| `HelloArActivity` | ARCore 카메라 Pose·기준 자세·필기 데이터 수집 | [Android](../android-app/app/src/main/java/com/nkm/ar/core/java/views/HelloArActivity.java) |
+| `TestProjector` | 원점 이동, 회전 적용, 2D 좌표 반환 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java) |
+| `ProjectionCanvasView` | 2D 점·획 경계를 선과 Bitmap으로 렌더링 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java) |
+| `OcrRequestFlow` / `RetrofitClient` | Base64 이미지 요청, 오류 처리 및 결과 화면 전환 | [요청 흐름](../android-app/app/src/main/java/com/nkm/ar/core/java/network/OcrRequestFlow.java) · [클라이언트](../android-app/app/src/main/java/com/nkm/ar/core/java/network/RetrofitClient.java) |
+| `server/app.py` | 요청 수신, JSON 검사, OCR 결과 응답 | [Flask](../python-backend/server/app.py) |
+| `model/paddleOCR.py` / `model/utils.py` | 이미지 검증·크롭·정규화·실제 OCR 추론 | [추론](../python-backend/model/paddleOCR.py) · [전처리](../python-backend/model/utils.py) |
 
-## 2. 공중 필기와 좌표 투영
+## 2. Android: 3D 필기 입력과 2D 투영
 
-### 2.1 입력 수집
+### 2.1 기준 자세 설정과 3D 궤적 수집
 
-1. 사용자가 **기준점 설정**을 누르면 해당 프레임의 ARCore 카메라 월드 좌표 `(tx, ty, tz)`를 원점 `origin`으로 기록합니다.
-2. 카메라 Pose의 X·Z 축으로부터 기준 방향 `originRight`, `originDir`을 계산합니다. 현재 구현은 각 축에 음수 부호를 적용합니다.
-3. 화면의 필기 영역을 터치 중이고 기준점이 존재하면 **카메라 이동 위치**를 3차원 점으로 추가합니다. 매우 가까운 연속 위치는 거리 제곱의 임계값 `0.00001`을 기준으로 건너뜁니다.
-4. 터치를 떼면 획 경계 인덱스(`breakPoints`)를 기록해 다음 획과 연결되지 않게 합니다.
+1. **기준점 설정 버튼:** 현재 카메라의 월드 위치 `(tx, ty, tz)`를 `origin`에 저장하고, 카메라 X/Z 축의 음수 방향을 `originRight`와 `originDir`에 저장합니다.
+2. **필기 영역 터치:** 터치하는 동안 ARCore의 현재 **카메라 위치**를 `Point3F`로 추가합니다. 연속 점 사이 거리 제곱이 `0.00001` 미만인 경우에는 추가하지 않습니다.
+3. **획 구분:** 터치를 놓으면 `breakPoints`에 인덱스를 남겨 서로 다른 획 사이에 선이 연결되지 않도록 합니다.
+4. **2D 미리보기:** 새 위치를 추가할 때마다 `TestProjector.project`를 호출해 투영 좌표를 갱신합니다.
 
-이는 **휴대전화를 공중에서 움직이면서 터치로 필기 구간을 제어**하는 방식입니다. ARCore가 제공하는 카메라 추정 Pose에는 기기 센서와 비전 추적의 결과가 반영됩니다.
+ARCore가 카메라의 위치·자세를 추정하지만, **문자 필기 구간은 Android 화면 터치 이벤트로 구분**합니다. 따라서 '손끝 위치를 추적하는 공중 필기'라고 소개하지 않습니다.
 
-### 2.2 3D → 2D 직교 투영
+### 2.2 기준 자세 기반 직교 투영
 
-[`TestProjector.project(...)`](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java)은 세 단계로 동작합니다.
+구현상의 처리 순서는 다음과 같습니다.
 
-1. 원점 이동: 각 점 `p`에서 기준 위치 `o`를 뺍니다.
-2. 기준 축 정렬: `originDir` 및 `originRight`로 정의한 회전 `R`을 적용합니다.
-3. XY 성분만 선택해 `PointF`로 반환합니다. 깊이(Z) 성분은 결과 좌표에 포함하지 않습니다.
-
-```math
-q = R(p-o), \qquad (u,v)=(q_x,q_y)
+```text
+입력: 월드 좌표 p, 기준 위치 o, 카메라 기준 방향(originDir/originRight)
+    ↓
+p - o                        기준 원점으로 평행이동
+    ↓
+rotation.applyTo(p - o)       코드에서 정의한 회전 적용
+    ↓
+(x, y)                       깊이 성분 제외 → 2차원 점
 ```
 
-이 표기는 **구현의 처리 순서를 요약한 수식**입니다. 실제 축 정렬은 Apache Commons Math `Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K, normalizedDir, originRightVec)` 호출로 정의됩니다. 논문의 좌표계·수식과 비교할 때 축 부호 및 회전 방향을 별도로 확인해야 합니다.
+수학적으로 **코드의 처리 순서를 요약**하면 다음과 같습니다.
 
-### 2.3 Bitmap 생성
+\[
+\mathbf{q}=R(\mathbf{p}-\mathbf{o}), \qquad
+(u,v)=(q_x,q_y)
+\]
 
-[`ProjectionCanvasView`](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java)는 2D 점들의 범위를 기준으로 전체 획을 중앙 정렬하고, 가로·세로 비율이 유지되도록 스케일을 조정합니다. `breakPoints`에서는 선을 잇지 않습니다. 검은 선을 흰 배경에 렌더링한 결과를 Bitmap으로 추출하여 PNG/Base64로 전송합니다.
+여기서 `R`은 **구현에서 생성한 회전 객체**이지, 별도로 검증된 카메라→월드 또는 월드→카메라 변환 행렬을 뜻하는 이름이 아닙니다. 실제 코드는 다음처럼 정의합니다.
 
-**중요:** 필기 영역의 실제 콘텐츠 크롭과 384×384 정규화는 Android가 아니라 **Flask 쪽 `model/utils.py`**에서 수행합니다.
-
-## 2.4. 개발 중 설계 변경의 근거 (개발자 회고)
-
-최종 코드가 현재 구조를 선택하게 된 배경에는 두 차례의 설계 변경이 있었습니다. **아래 초기 방식은 개발 당시 시도·관찰한 내용으로, 현재 저장소의 테스트가 초기 프로토타입까지 재현한다는 뜻이 아닙니다.**
-
-| 항목 | 초기 접근 | 관찰한 제약 | 최종 선택 |
-| --- | --- | --- | --- |
-| 3D 위치 추적 | 가속도·자이로센서만으로 추정·적분 | 적분 오차가 누적되어 필기 궤적이 드리프트함 | ARCore Motion Tracking에서 제공되는 카메라 Pose 사용 |
-| 2D 투영 평면 | PCA의 PC1·PC2를 주축으로 사용 | 필기 분포에 따라 좌우·상하 방향이 불안정하고 반전·뒤집힘 현상이 발생함 | 사용자가 지정한 카메라 기준 위치·방향으로 회전·직교 투영 |
-
-### 관성센서만으로 위치를 구하지 않은 이유
-
-가속도 적분으로 속도·위치를 구할 때는 센서 바이어스와 노이즈가 누적될 수 있습니다. 프로젝트에서는 초기 방식에서 필기 좌표의 누적 오차를 관찰했고, 카메라 영상의 시각 정보와 관성 측정을 함께 이용하는 **ARCore의 카메라 Pose 추정**으로 입력 방식을 변경했습니다. 현재 구현은 별도 손끝 추적이나 직접적인 IMU 이중 적분을 수행하지 않습니다.
-
-### PCA를 투영 기준축으로 사용하지 않은 이유
-
-PCA의 주성분 고유벡터는 **부호가 유일하지 않으며**, 데이터의 분산 특성이 바뀌면 선택되는 축의 상대적 우선순위도 달라집니다. 개발 당시 필기 궤적의 형태에 따라 문자 좌우 반전·상하 뒤집힘이 발생했습니다. 따라서 **필기된 데이터로부터 매번 축을 정의하는 방식** 대신, 기준점 버튼을 누른 순간의 스마트폰 자세로 좌표계를 정의했습니다. 이 결정은 축 방향을 입력 분포가 아니라 사용자의 기준 자세에 종속시킨다는 점에서 차이가 있습니다.
-
-단, PCA 대비 정량적 오류 감소량이나 초기 실험의 재현 자료는 현재 확보되지 않았습니다. 현재 최종 투영 코드는 위의 [2.2 절](#22-3d--2d-직교-투영) 및 `TestProjector.java`에서 확인할 수 있습니다.
-
-## 3. HTTP 요청·응답 계약
-
-Android는 [`OcrService.java`](../android-app/app/src/main/java/com/nkm/ar/core/java/network/OcrService.java)를 통해 다음 요청을 보냅니다.
-
-```http
-POST /predict_image
-Content-Type: application/json
+```java
+Rotation rotation = new Rotation(
+    Vector3D.PLUS_J,
+    Vector3D.PLUS_K,
+    normalizedDir,
+    originRightVec
+);
+Vector3D q = rotation.applyTo(point.subtract(originVec));
+return new PointF((float) q.getX(), (float) q.getY());
 ```
+
+Apache Commons Math의 회전 생성자에 넘기는 **벡터 순서, 축 부호 및 회전 방향**이 최종 시각 결과를 결정합니다. 논문 수식을 코드에 적용할 때 이를 단순한 `Rᵀ`로 바꾸어 적지 않습니다. 특히 좌표계 방향을 검증하는 독립 단위 테스트는 현재 확인되지 않았습니다.
+
+### 2.3 2D 화면 렌더링과 이미지 생성
+
+`ProjectionCanvasView`는 전체 점 범위에 따라 종횡비를 유지하며 선을 화면 중앙에 배치하고, `breakPoints`에서 선 그리기를 끊습니다. 흰색 배경·검은 선의 Bitmap을 생성한 뒤 PNG로 인코딩하고 Base64 문자열로 만들어 서버에 전송합니다.
+
+이미지를 보여주기 위한 파일은 Android 앱 전용 캐시에 임시로 저장하고, 결과 화면에서 읽은 후 삭제합니다.
+
+**글씨 영역을 찾아 자르고 384×384 이미지로 정규화하는 과정은 Android가 아니라 Python 서버의 전처리 단계**입니다.
+
+## 3. Flask/PaddleOCR 데이터 흐름
+
+### 3.1 HTTP API
+
+`Retrofit`은 다음 JSON을 `POST /predict_image`로 전송합니다.
 
 ```json
 {
-  "image_base64": "<PNG 이미지의 Base64 문자열>"
+  "image_base64": "<PNG를 Base64로 인코딩한 문자열>"
 }
 ```
 
-인식 성공 시 응답 예:
+정상 인식 응답 예시는 다음과 같습니다.
 
 ```json
 {
@@ -103,82 +108,64 @@ Content-Type: application/json
 }
 ```
 
-오류 상태는 현재 Flask 코드 기준으로 다음과 같이 처리합니다.
+실패 시에는 `success: false`와 `error`를 반환합니다. 일부 입력 오류 응답에는 `message`가 없을 수 있으므로 **성공·실패 응답의 필드 구성이 항상 같지는 않습니다.** Android DTO의 `confidence` 필드는 현재 서버가 계산·항상 반환하는 신뢰도 점수로 간주하지 않습니다.
 
-| HTTP 상태 | 의미 |
+| 응답 코드 | 현재 코드의 주요 상황 |
 | --- | --- |
-| `200` | OCR 인식 성공 |
-| `400` | 잘못된 JSON, 필수 이미지 데이터 누락·오류, 또는 문자 미검출 |
-| `413` | 요청 본문·이미지 크기 제한 초과 |
-| `500` | 예기치 못한 추론 오류 |
+| `200` | 문자 인식 성공 |
+| `400` | 잘못된 요청 또는 문자 미검출 |
+| `413` | 본문·이미지 크기 제한 |
+| `500` | 기타 OCR/서버 처리 오류 |
 | `503` | OCR 모델 초기화 불가 |
 
-일부 `400` 응답에는 `message` 필드가 없을 수 있습니다. 성공 응답 스키마 외에 `confidence` 등 별도 신뢰도 수치를 **현재 서버가 항상 반환한다고 가정하지 않습니다.** Android는 통신 오류나 인식 실패를 민감정보가 없는 안내 문구로 처리합니다.
+### 3.2 검증·전처리·추론
 
-## 4. Flask 입력 검증 및 PaddleOCR 처리
+- **Flask 요청 한도:** HTTP 요청 본문 최대 **8MiB**
+- **이미지 형식:** PNG, JPEG, WebP
+- **디코딩된 이미지 한도:** **5MiB**, 최대 **1,200만 픽셀**
+- **전처리:** 회색조 → 밝기 임계값(`< 240`)으로 글씨 영역 검출 → 영역에 약 20% 여백을 적용해 크롭 → 종횡비를 유지한 리사이즈 → 흰색 **384×384** 캔버스에 배치
+- **추론:** PaddleOCR 영어 모델의 `rec_texts`를 공백으로 연결해 결과 문자열 생성
 
-[`app.py`](../python-backend/server/app.py)는 JSON 객체와 `image_base64` 존재 여부를 확인하고 요청 본문 최대 크기를 **8MiB**로 제한합니다. [`paddleOCR.py`](../python-backend/model/paddleOCR.py)는 추가로 다음을 검사합니다.
+CPU 기반 실제 추론은 CI에서 확인했습니다. OCR 모델은 최초 요청 시 초기화하며, 현재 데모용 Flask 개발 서버는 공유 모델의 연속 요청 문제를 완화하기 위해 `threaded=False`로 실행합니다. **이는 프로덕션 병렬 처리 안정성을 검증했다는 의미가 아닙니다.**
 
-- 인코딩: 올바른 Base64 문자열
-- 이미지 형식: PNG, JPEG 또는 WebP
-- 디코딩한 파일 크기: **5MiB 이하**
-- 이미지 해상도: **1,200만 픽셀 이하**
+## 4. 설계 변경의 이유
 
-전처리([`model/utils.py`](../python-backend/model/utils.py))는 회색조 변환 → 밝기 임계값(`< 240`)으로 글씨 영역 탐지 → 여백을 둔 크롭(`pad_ratio=0.2`) → 종횡비 유지 리사이즈 → 흰색 **384×384** 캔버스 중앙 배치로 진행합니다. 그다음 PaddleOCR 영어 모델의 `rec_texts`를 결합합니다.
+여기부터는 **캡스톤 개발 당시 시도한 방식과 선택 과정**에 대한 설명입니다. 현재 코드가 초기 방식의 정량적 성능까지 재현한다는 의미는 아닙니다.
 
-기본 장치는 `OCR_DEVICE=cpu`입니다. 서버는 OCR 모델을 처음 사용할 때 지연 초기화하며, 현재 Flask 개발 서버는 `threaded=False`로 요청을 직렬 처리합니다. 과거 동일 서버에서 여러 요청을 처리할 때 오류가 관찰된 뒤 적용한 설정입니다. **멀티스레드 근본 원인이 완전히 규명됐거나 운영 환경의 동시 처리까지 검증됐다는 의미는 아닙니다.**
+### 4.1 IMU 단독 위치 추정에서 ARCore로
 
-## 5. 데이터 저장과 보안 경계
+초기에는 가속도·자이로센서만으로 위치를 계산하려 했으나, 특히 가속도 기반 속도·위치 적분에서 누적 오차(드리프트)를 경험했습니다. 이에 **비전·관성 정보 융합으로 카메라 Pose를 추정하는 ARCore Motion Tracking**을 채택했습니다. 개발자가 SLAM 알고리즘 자체를 직접 구현했다고 주장하는 것은 아닙니다.
 
-| 위치 | 현재 정책 |
+### 4.2 PCA 투영에서 기준 자세 투영으로
+
+초기에는 주성분 분석(PCA)의 PC1·PC2를 필기 궤적의 2D 축으로 사용했습니다. 그러나 필기 분포에 따라 문자 좌우 반전이나 뒤집힘이 발생해, **문자의 방향을 입력 데이터의 분산으로만 결정하지 않는 방식**이 필요했습니다.
+
+PCA 고유벡터의 부호는 수학적으로 유일하지 않고, 데이터 분포 변화에 따라 축 우선순위도 달라질 수 있습니다. 최종 방식은 **사용자가 지정한 기준 위치와 카메라 방향**으로 좌표계를 설정해 이 문제에 대응합니다.
+
+초기 접근의 자료로 [PCA 분석용 Python 스크립트](../python-backend/utils/3d_visualizer/pca.py), [3D 좌표 CSV 샘플](../python-backend/utils/3d_visualizer/ar_camera_poses.csv), [3D 시각화 스크립트](../python-backend/utils/3d_visualizer/visualizer.py)가 저장소에 남아 있습니다. 단, PCA 스크립트는 **현재 그대로 재실행이 검증된 완성형 비교 실험 코드가 아니며**, 이 좌표 샘플만으로 당시 모든 반전 현상·성능 개선율을 재현할 수 없습니다.
+
+### 4.3 논문과 현재 코드의 경계
+
+- [캡스톤 논문](../논문_비전%20및%20관성%20센서%20융합을%20활용한%20직교%20투영%20기반%20딥러닝%20공중%20필기%20인식.pdf)에는 설계 배경, 3D 필기 궤적(그림 5), 2D 투영 이미지(그림 6), 인식 화면(그림 7)이 포함됩니다.
+- `KalmanFilter.java` 파일은 있으나, **현재 주요 필기 경로에서 호출되지 않으므로** 현재 앱이 별도의 실시간 칼만 필터 보정을 실행한다고 주장하지 않습니다.
+- 논문에 보고된 당시 전체 인식률과 처리 시간은 **원본 실험 데이터셋이 없어 현재 코드로 재측정하지 않았습니다.** 측정·재현 범위는 [테스트 문서](testing.md)에 명시합니다.
+
+## 5. 데이터 저장·보안·운영 경계
+
+| 위치 | 기본 동작 |
 | --- | --- |
-| Android OCR 텍스트 | 결과 화면에서 사용하며 새로 `SharedPreferences`에 저장하지 않음 |
-| Android 이미지 미리보기 | 앱 전용 캐시에 생성하고 결과 화면에서 읽은 뒤 파일 삭제 |
-| 오래된 앱의 OCR 저장 값 | 앱 시작·결과 화면 진입 시 관련 설정과 고정 파일명 캐시 정리 |
-| Flask OCR 이미지/텍스트 | 기본적으로 서버 디스크에 저장하지 않음. `OCR_SAVE_RESULTS_DIR`를 지정한 경우에만 선택적 저장 |
-| 사용자가 내보낸 좌표 CSV | **예외:** 명시적인 내보내기 조작으로 공용 Downloads 폴더에 영구 보존될 수 있음 |
+| Android 결과 문자열 | `ResultActivity`에 표시하고 새로 `SharedPreferences`에 영구 저장하지 않음 |
+| Android 결과 미리보기 | 앱 전용 캐시 파일을 읽은 직후 삭제(프로세스 비정상 종료 시 잔존 가능) |
+| Flask OCR 결과 | 기본적으로 디스크에 저장하지 않음. `OCR_SAVE_RESULTS_DIR` 지정 시에만 명시적 저장 |
+| 수동 좌표 CSV 내보내기 | 사용자가 버튼을 누르면 **공용 Downloads에 지속 보관**될 수 있음 |
+| API 서버 | Debug는 로컬 HTTP(S) 허용, Release는 HTTPS 주소만 허용. 공개 API 인증·레이트리밋은 아직 구현 범위 밖 |
 
-- 네트워크 Base64 본문과 OCR 인식 문자열을 일반 애플리케이션 로그로 남기지 않도록 수정했습니다.
-- Android **Debug** 빌드만 로컬 테스트용 HTTP를 허용합니다. **Release** 빌드의 OCR 주소는 HTTPS만 허용합니다.
-- 기본 원격 서버 URL을 APK에 넣지 않았습니다. 서버 주소는 빌드 시 명시합니다. [설정 가이드](android-ocr-server-config.md)
-- ngrok은 환경변수를 통한 **선택적 터널링**이며 API 인증을 제공하지 않습니다. 서버를 공용 인터넷에 노출하려면 인증, 요청 제한 및 운영용 서버 구성 등이 필요합니다.
-- 파일 삭제는 일반적인 캐시 정리이지 저장장치 수준의 보안 삭제를 보장하지 않습니다.
+암호화된 저장이나 파일의 복구 불가능한 삭제까지 보장하지 않습니다. 개발용 Flask 서버를 공용 인터넷에 직접 노출하는 것을 권장하지 않습니다.
 
-## 6. 처리 순서 — 시퀀스
+[서버 주소 설정](android-ocr-server-config.md) · [CI 및 검증 한계](testing.md) · [README](../README.md)
 
-```mermaid
-sequenceDiagram
-    actor U as User
-    participant A as Android / ARCore
-    participant R as Retrofit
-    participant F as Flask
-    participant P as PaddleOCR
+## 6. 참고 및 출처
 
-    U->>A: 기준점 지정, 이동하며 필기
-    A->>A: 카메라 Pose 수집 및 2D 투영
-    U->>A: 인식 버튼
-    A->>A: Bitmap → Base64 및 일시적 미리보기
-    A->>R: 인식 요청
-    R->>F: POST /predict_image
-    F->>F: JSON·Base64·이미지 검증
-    F->>P: 전처리 이미지 추론
-    P-->>F: 인식 문자열
-    F-->>R: JSON 응답
-    R-->>A: 응답 처리
-    A-->>U: ResultActivity에 텍스트·미리보기
-    A->>A: 미리보기 캐시 파일 삭제
-```
-
-## 7. 참고 자료와 검증 범위
-
-- [시연 영상 — YouTube Shorts](https://www.youtube.com/shorts/3RjYSgrBuwM)
-- [캡스톤 논문 원문](../논문_비전%20및%20관성%20센서%20융합을%20활용한%20직교%20투영%20기반%20딥러닝%20공중%20필기%20인식.pdf) — 3D 궤적·2D 투영 이미지 및 인식 화면은 논문의 그림 참조
-- [테스트 결과 및 한계](testing.md) — 실제 PaddleOCR CPU, Android 에뮬레이터 E2E, 입력 검증 및 데이터 보호
-- [서버 주소 및 실행 환경 설정](android-ocr-server-config.md)
-
-### 명시적인 한계
-
-1. **원본 대규모 실험 데이터가 없어** 논문에 기록된 과거 인식률과 처리 시간을 재현하지 않았습니다.
-2. Android CI는 **준비된 이미지의 전송부터 결과 화면 표시까지** 검증합니다. 실제 스마트폰에서의 ARCore 공중 필기 동작을 자동 검증하지는 않습니다. 논문의 데모·서술과 CI 검증 범위는 구분해야 합니다.
-3. `KalmanFilter.java`가 존재하지만 현재 주된 필기 경로에서 호출되는 것은 확인되지 않았으므로, 실시간 칼만 필터 보정을 적용했다고 기록하지 않습니다.
-4. 클라우드 서비스, 프로덕션 인증·오토스케일링·운영 모니터링이 배포됐다는 주장은 하지 않습니다.
+- [시연 영상](https://www.youtube.com/shorts/3RjYSgrBuwM)
+- [캡스톤 논문 PDF](../논문_비전%20및%20관성%20센서%20융합을%20활용한%20직교%20투영%20기반%20딥러닝%20공중%20필기%20인식.pdf)
+- Android의 렌더링 및 ARCore 앱 골격 일부는 Google 샘플 코드를 포함하며, 원본 저작권 고지는 해당 소스에 유지되어 있습니다. 캡스톤에서 직접 담당한 알고리즘·OCR 서버는 [README의 역할 표](../README.md#my-contributions)에서 구분했습니다.
