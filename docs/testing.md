@@ -6,6 +6,7 @@
 
 | 수준 | 테스트 입력·방법 | 확인한 결과 | CI 실행 기록 |
 | --- | --- | --- | --- |
+| 3D 투영·2D 렌더링 | Robolectric/JUnit으로 기준 원점·회전축·평행이동 및 음수·수평·수직·단일 점·획 구분 검증 | [투영 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/utils/projectors/TestProjectorTest.java) · [렌더링 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/views/ProjectionCanvasViewTest.java) | [단위 테스트 워크플로](../.github/workflows/android-projection-unit-tests.yml) |
 | Flask API 계약 | OCR 모델을 모의 객체로 교체하여 정상·비정상 요청 확인 | JSON·상태코드·예외 처리 | [Flask API](https://github.com/scr08212/air-drawing/actions/runs/42347472557) |
 | 실제 OCR 모델 | 자동 생성한 `HELLO 123` PNG → CPU PaddleOCR | `HELLO 123` 인식 | [실모델 추론](https://github.com/scr08212/air-drawing/actions/runs/42271598029) |
 | 논문 이미지 단독 추론 | 논문 PDF 그림 6에서 추출한 `hello` 이미지 | `hello` 인식 결과 기록 | [논문 샘플 분석](https://github.com/scr08212/air-drawing/actions/runs/42346382543) |
@@ -38,6 +39,7 @@
 - [`test_flask_api.py`](../python-backend/tests/test_flask_api.py)
 - [`warmup_live_backend.py`](../python-backend/tests/warmup_live_backend.py)
 - [Android E2E GitHub Actions 워크플로](../.github/workflows/android-flask-e2e.yml)
+- [투영·렌더링 JVM 단위 테스트 워크플로](../.github/workflows/android-projection-unit-tests.yml)
 
 ## 3. 후속 유지보수·장애 대응 내역
 
@@ -101,7 +103,7 @@ CI의 `connectedDebugAndroidTest`는 **합성·논문 샘플을 Android 테스�
 ## 5. 남아 있는 검증 공백
 
 - **실기기 ARCore 전 과정:** 카메라 Pose 기반 공중 필기와 기준 자세 설정이 실제 지원 기기에서 어떻게 동작하는지 독립적인 최근 실기기 회귀 테스트가 필요합니다. 과거 시연 영상·논문은 별도 증거입니다.
-- **직교 투영의 수치적 단위 테스트:** 기준축·회전 방향·반전 방지 동작을 자동으로 보장하는 좌표 변환 단위 테스트는 현재 확인되지 않았습니다.
+- **투영·렌더링 단위 테스트의 범위:** 기준 원점 이동·구현상의 회전축 매핑·깊이 성분 제거와 렌더링 경계값은 JVM/Robolectric 테스트로 검사합니다. 이는 독립적으로 검증된 월드↔카메라 좌표계 정의나 실제 손글씨 방향·반전 방지 성능까지 증명하는 것은 아닙니다.
 - **기존 PCA/IMU 시도:** [초기 PCA 스크립트](../python-backend/utils/3d_visualizer/pca.py) 및 [약 140개 좌표가 담긴 샘플 CSV](../python-backend/utils/3d_visualizer/ar_camera_poses.csv)는 존재합니다. 다만 스크립트는 현재 독립 실행 검증이 되지 않았고, 초기 IMU/PCA 방식과 최종 방식의 정량적 비교 실험 자료도 부족합니다.
 - **논문 원본 OCR 데이터셋:** 논문에 기술된 전체 정확도·GPU 처리시간을 재현할 수 있는 대규모 원본 샘플은 확보되지 않았습니다.
 - **배포·운영:** 공개 HTTPS 서버의 인증, 레이트 리밋, 동시성·장애 복구·성능 지표, 클라우드 운영은 현재 검증 범위가 아닙니다.
