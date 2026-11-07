@@ -36,6 +36,19 @@ jobs:
           packages: platform-tools
       - name: Install Android compile SDK
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Verify insecure build URLs are rejected
+        run: |
+          chmod +x android-app/gradlew
+          if ./android-app/gradlew --no-daemon -p android-app help -PocrReleaseBaseUrl=http://example.invalid/ > /tmp/ocr-bad-release.log 2>&1; then
+            echo "ERROR: Release accepted insecure HTTP"
+            exit 1
+          fi
+          grep -q "ocrReleaseBaseUrl" /tmp/ocr-bad-release.log
+          if ./android-app/gradlew --no-daemon -p android-app help -PocrDebugBaseUrl=ftp://example.invalid/ > /tmp/ocr-bad-debug.log 2>&1; then
+            echo "ERROR: Debug accepted unsupported FTP"
+            exit 1
+          fi
+          grep -q "ocrDebugBaseUrl" /tmp/ocr-bad-debug.log
       - name: Enable emulator KVM
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
@@ -89,7 +102,7 @@ jobs:
             ( env RUNNER_TRACKING_ID="" OCR_DEVICE=cpu OMP_NUM_THREADS=1 python -u python-backend/server/app.py > ci-artifacts/flask.log 2>&1 & )
             python python-backend/tests/warmup_live_backend.py
             chmod +x android-app/gradlew
-            ./android-app/gradlew --no-daemon -p android-app connectedDebugAndroidTest -PocrBaseUrl=http://10.0.2.2:5000/
+            ./android-app/gradlew --no-daemon -p android-app connectedDebugAndroidTest -PocrDebugBaseUrl=http://10.0.2.2:5000/
       - name: Upload instrumentation results and OCR fixtures
         if: always()
         uses: actions/upload-artifact@v4
