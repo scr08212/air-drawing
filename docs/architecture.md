@@ -10,7 +10,7 @@ Air Drawing은 **스마트폰 자체의 이동**을 필기 입력으로 사용�
 flowchart TB
     subgraph Mobile["Android · Java"]
         direction LR
-        A["ARCore Pose<br/>3D 필기 궤적"] --> B["TestProjector<br/>직교 투영 · Canvas"]
+        A["ARCore Pose<br/>3D 필기 궤적"] --> B["ReferencePoseProjector<br/>직교 투영 · Canvas"]
         B --> C["Bitmap · Base64<br/>Retrofit"]
         H["ResultActivity<br/>인식 결과"]
     end
@@ -25,8 +25,8 @@ flowchart TB
 
 | 구성 요소 | 구현 책임 | 실제 소스 |
 | --- | --- | --- |
-| `HelloArActivity` | ARCore 프레임 처리, 기준 자세, 3D 궤적·획 경계 수집 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/HelloArActivity.java) |
-| `TestProjector` | 기준 위치를 뺀 뒤 회전을 적용해 2D 점 생성 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java) |
+| `AirWritingActivity` | ARCore 프레임 처리, 기준 자세, 3D 궤적·획 경계 수집 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/AirWritingActivity.java) |
+| `ReferencePoseProjector` | 기준 위치를 뺀 뒤 회전을 적용해 2D 점 생성 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/ReferencePoseProjector.java) |
 | `ProjectionCanvasView` | 2D 획의 크기 조정·렌더링 및 Bitmap 생성 | [Java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java) |
 | `OcrService` / `RetrofitClient` | OCR HTTP 요청 정의 및 전송 | [API 인터페이스](../android-app/app/src/main/java/com/nkm/ar/core/java/network/OcrService.java) · [클라이언트](../android-app/app/src/main/java/com/nkm/ar/core/java/network/RetrofitClient.java) |
 | `server/app.py` | Flask 엔드포인트와 JSON 응답 | [Python](../python-backend/server/app.py) |
@@ -63,7 +63,7 @@ flowchart LR
 
 ### 3.1. ARCore Camera Pose
 
-Android의 `HelloArActivity`는 ARCore `Session`에서 `Frame`과 `Camera`를 획득하고 `camera.getPose()`를 읽습니다. 필기 기록에는 Pose의 회전 자체가 아니라 매 프레임의 **카메라 위치**인 `tx()`, `ty()`, `tz()`를 사용하며, 기준 자세를 설정할 때에는 방향 축도 함께 읽습니다.
+Android의 `AirWritingActivity`는 ARCore `Session`에서 `Frame`과 `Camera`를 획득하고 `camera.getPose()`를 읽습니다. 필기 기록에는 Pose의 회전 자체가 아니라 매 프레임의 **카메라 위치**인 `tx()`, `ty()`, `tz()`를 사용하며, 기준 자세를 설정할 때에는 방향 축도 함께 읽습니다.
 
 - **추적 입력:** ARCore가 제공하는 카메라 Pose
 - **필기 좌표:** ARCore 월드 좌표계의 카메라 위치 `(x, y, z)`
@@ -89,7 +89,7 @@ originRight = new Point3F(-xAxis[0], -xAxis[1], -xAxis[2]);
 | `originDir` | 기준 카메라 Z축의 음수 방향 벡터 |
 | `originRight` | 기준 카메라 X축의 음수 방향 벡터 |
 
-이 세 값을 `TestProjector.project()`의 인자로 전달합니다. 투영 방향은 전체 필기 데이터의 분포가 아니라 **기준점을 설정할 당시의 카메라 자세**로 정해집니다.
+이 세 값을 `ReferencePoseProjector.project()`의 인자로 전달합니다. 투영 방향은 전체 필기 데이터의 분포가 아니라 **기준점을 설정할 당시의 카메라 자세**로 정해집니다.
 
 ### 3.3. Trajectory Sampling
 
@@ -99,12 +99,12 @@ $$
 d^2=(x-x_{prev})^2+(y-y_{prev})^2+(z-z_{prev})^2
 $$
 
-`HelloArActivity`는 $d^2 \geq 0.00001$일 때 현재 점을 `points`에 추가하고 전체 점을 다시 투영합니다. 좌표 단위를 미터로 보면 연속 저장 점 사이 약 **3.16mm**에 해당하는 거리 기준입니다. 첫 번째 점은 이전 점이 없어 별도 거리 계산 없이 추가됩니다.
+`AirWritingActivity`는 $d^2 \geq 0.00001$일 때 현재 점을 `points`에 추가하고 전체 점을 다시 투영합니다. 좌표 단위를 미터로 보면 연속 저장 점 사이 약 **3.16mm**에 해당하는 거리 기준입니다. 첫 번째 점은 이전 점이 없어 별도 거리 계산 없이 추가됩니다.
 
 ```java
 if (distance >= 0.00001f) {
     points.add(new Point3F(tx, ty, tz));
-    projectedPoints = TestProjector.project(points, origin, originDir, originRight);
+    projectedPoints = ReferencePoseProjector.project(points, origin, originDir, originRight);
 }
 ```
 
@@ -116,7 +116,7 @@ if (distance >= 0.00001f) {
 
 이후 `ProjectionCanvasView`는 해당 인덱스에서 선 그리기를 건너뜁니다. 따라서 한 글자 안에 여러 번 펜을 떼는 동작도 하나의 연속된 3D 선으로 잘못 연결되지 않습니다.
 
-근거: [HelloArActivity.java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/HelloArActivity.java) · [ProjectionCanvasView.java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java)
+근거: [AirWritingActivity.java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/AirWritingActivity.java) · [ProjectionCanvasView.java](../android-app/app/src/main/java/com/nkm/ar/core/java/views/ProjectionCanvasView.java)
 
 ## 4. Orthographic Projection
 
@@ -146,7 +146,7 @@ $$
 
 ### 4.3. Rotation
 
-`TestProjector.java`는 Apache Commons Math의 `Rotation` 생성자에 두 쌍의 방향 벡터를 전달하고, 그 회전을 상대 좌표에 적용합니다.
+`ReferencePoseProjector.java`는 Apache Commons Math의 `Rotation` 생성자에 두 쌍의 방향 벡터를 전달하고, 그 회전을 상대 좌표에 적용합니다.
 
 ```java
 Vector3D normalizedDir = originDirVec.normalize();
@@ -177,7 +177,7 @@ projectedPoints.add(new PointF(
 ));
 ```
 
-출력에서는 회전된 점의 X·Y만 사용하고 Z 성분은 버립니다. 이것이 이후 Android Canvas에서 사용할 **2차원 필기 궤적**입니다. 회전과 2D 투영의 세부 구현은 [TestProjector.java](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java)에서 확인할 수 있습니다.
+출력에서는 회전된 점의 X·Y만 사용하고 Z 성분은 버립니다. 이것이 이후 Android Canvas에서 사용할 **2차원 필기 궤적**입니다. 회전과 2D 투영의 세부 구현은 [ReferencePoseProjector.java](../android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/ReferencePoseProjector.java)에서 확인할 수 있습니다.
 
 ### 4.5. Projection Result
 

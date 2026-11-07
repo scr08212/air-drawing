@@ -6,7 +6,7 @@
 
 | 수준 | 테스트 입력·방법 | 확인한 결과 | CI 실행 기록 |
 | --- | --- | --- | --- |
-| 3D 투영·2D 렌더링 | Robolectric/JUnit으로 기준 원점·회전축·평행이동 및 음수·수평·수직·단일 점·획 구분 검증 | [투영 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/utils/projectors/TestProjectorTest.java) · [렌더링 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/views/ProjectionCanvasViewTest.java) | [단위 테스트 워크플로](../.github/workflows/android-projection-unit-tests.yml) |
+| 3D 투영·2D 렌더링 | Robolectric/JUnit으로 기준 원점·회전축·평행이동 및 음수·수평·수직·단일 점·획 구분 검증 | [투영 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/utils/projectors/ReferencePoseProjectorTest.java) · [렌더링 테스트](../android-app/app/src/test/java/com/nkm/ar/core/java/views/ProjectionCanvasViewTest.java) | [단위 테스트 워크플로](../.github/workflows/android-projection-unit-tests.yml) |
 | Flask API 계약 | OCR 모델을 모의 객체로 교체하여 정상·비정상 요청 확인 | JSON·상태코드·예외 처리 | [Flask API](https://github.com/scr08212/air-drawing/actions/runs/42347472557) |
 | 실제 OCR 모델 | 자동 생성한 `HELLO 123` PNG → CPU PaddleOCR | `HELLO 123` 인식 | [실모델 추론](https://github.com/scr08212/air-drawing/actions/runs/42271598029) |
 | 논문 이미지 단독 추론 | 논문 PDF 그림 6에서 추출한 `hello` 이미지 | `hello` 인식 결과 기록 | [논문 샘플 분석](https://github.com/scr08212/air-drawing/actions/runs/42346382543) |
