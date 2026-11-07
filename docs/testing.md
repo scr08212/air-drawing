@@ -1,6 +1,6 @@
 # Testing & Evidence | Air Drawing
 
-> **목적:** 실제 실행·테스트로 **확인한 사실**을 기록합니다. 캡스톤 당시의 IMU/PCA 설계 변경 이유는 [아키텍처 문서](architecture.md#4-설계-변경의-이유)에, 개인 기여는 [README](../README.md#my-contributions)에 정리했습니다.
+> **목적:** 실제 실행·테스트로 **확인한 사실**을 기록합니다. 캡스톤 당시의 IMU/PCA 설계 변경 이유는 [아키텍처 문서](architecture.md#7-engineering-decisions)에, 개인 기여는 [README](../README.md#project-overview--my-role)에 정리했습니다.
 
 ## 1. 검증 범위 및 결과
 
@@ -50,7 +50,7 @@
 | 코드·앱 설정의 민감정보 잔존 | ngrok 토큰 교체 및 코드에서 제거, OCR 문자열 영구 저장 제거, 이미지 캐시 일시 보존, 주소를 빌드 타입별로 분리 | 코드·계측 테스트 확인. Git 이력 재작성이나 저장매체 보안 삭제를 수행한 것은 아님 |
 | 만료된 서버 URL 또는 잘못된 연결 설정 | 기본 ngrok 주소 제거, Debug/Release 엔드포인트 명시적 지정, Release HTTPS 검증 | 부적절한 URL 거부 및 Android E2E 통과 |
 
-위 내용은 **캡스톤 당시의 IMU/PCA 설계 연구와 별개**인, 이후 실행 신뢰성·데이터 보호 개선 과정입니다. 설계 전환에 대한 설명은 [Architecture `4](architecture.md#4-설계-변경의-이유)를 참고하세요.
+위 내용은 **캡스톤 당시의 IMU/PCA 설계 연구와 별개**인, 이후 실행 신뢰성·데이터 보호 개선 과정입니다. 설계 전환에 대한 설명은 [Architecture 7절](architecture.md#7-engineering-decisions)를 참고하세요.
 
 ## 4. 검증된 환경에서 재실행
 
