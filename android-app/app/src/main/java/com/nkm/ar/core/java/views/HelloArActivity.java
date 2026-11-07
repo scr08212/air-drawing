@@ -51,6 +51,7 @@ import com.nkm.ar.core.java.network.OcrResponse;
 import com.nkm.ar.core.java.network.OcrRequestFlow;
 import com.nkm.ar.core.java.utils.CsvPointSaver;
 import com.nkm.ar.core.java.utils.OcrPreviewCache;
+import com.nkm.ar.core.java.utils.OcrPrivacyCleanup;
 import com.nkm.ar.core.java.datatypes.Point3F;
 import com.nkm.ar.core.java.utils.helpers.CameraPermissionHelper;
 import com.nkm.ar.core.java.utils.helpers.DepthSettings;
@@ -208,6 +209,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    // Scrub OCR results and fixed-name previews left on disk by older builds.
+    OcrPrivacyCleanup.clearLegacyResults(this);
     setContentView(R.layout.activity_main);
     surfaceView = findViewById(R.id.surfaceview);
     displayRotationHelper = new DisplayRotationHelper(/* context= */ this);
