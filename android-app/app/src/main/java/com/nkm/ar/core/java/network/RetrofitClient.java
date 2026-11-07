@@ -21,7 +21,7 @@ public final class RetrofitClient {
         if (!isConfigured()) {
             throw new IllegalStateException("OCR server URL not configured");
         }
-        if (!BuildConfig.DEBUG && !BuildConfig.OCR_BASE_URL.startsWith("https://")) {
+        if (!BuildConfig.DEBUG && !BuildConfig.OCR_BASE_URL.toLowerCase(java.util.Locale.ROOT).startsWith("https://")) {
             throw new IllegalStateException("Release OCR endpoint must use HTTPS");
         }
 
