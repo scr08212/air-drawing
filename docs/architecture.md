@@ -7,20 +7,20 @@
 Air Drawing은 **스마트폰 자체의 이동**을 필기 입력으로 사용하는 Android–Python 시스템입니다. ARCore가 추정한 스마트폰 카메라의 위치·방향을 이용해 3D 궤적을 수집하고, 사용자가 설정한 기준 자세에 따라 2D 필기 이미지로 투영합니다. 생성한 이미지를 Flask 서버에 전달하면 PaddleOCR가 문자를 인식해 Android로 반환합니다. **손가락 끝을 카메라로 추적하는 방식은 아닙니다.**
 
 ```mermaid
-flowchart LR
-    subgraph Android["Android · Java"]
-        A["ARCore Camera Pose"] --> B["HelloArActivity<br/>기준 자세·3D 획 수집"]
-        B --> C["TestProjector<br/>회전·XY 투영"]
-        C --> D["ProjectionCanvasView<br/>Canvas·Bitmap"]
-        D --> E["Retrofit<br/>PNG / Base64"]
-        I["ResultActivity<br/>인식 결과 표시"]
+flowchart TB
+    subgraph Mobile["Android · Java"]
+        direction LR
+        A["ARCore Pose<br/>3D 필기 궤적"] --> B["TestProjector<br/>직교 투영 · Canvas"]
+        B --> C["Bitmap · Base64<br/>Retrofit"]
+        H["ResultActivity<br/>인식 결과"]
     end
-    subgraph Python["Python 백엔드"]
-        F["Flask API<br/>/predict_image"] --> G["전처리<br/>글씨 영역 크롭·384×384"]
-        G --> H["PaddleOCR<br/>영문 인식"]
+    subgraph Backend["Python · OCR 서버"]
+        direction LR
+        D["Flask API<br/>/predict_image"] --> E["글씨 영역 크롭<br/>384×384"]
+        E --> F["PaddleOCR<br/>영문 인식"]
     end
-    E -->|"HTTP JSON"| F
-    H -->|"JSON 응답"| I
+    C -->|"HTTP JSON"| D
+    F -->|"인식 결과 JSON"| H
 ```
 
 | 구성 요소 | 구현 책임 | 실제 소스 |
@@ -37,20 +37,24 @@ flowchart LR
 사용자는 먼저 기준점을 설정합니다. 화면을 터치한 상태에서 **스마트폰을 이동**하면 ARCore 카메라 위치가 필기 데이터로 기록됩니다. 손을 떼면 획이 종료되며, 모든 필기가 끝난 뒤 별도의 **인식 버튼**으로 OCR 요청을 수행합니다.
 
 ```mermaid
-flowchart TD
-    A["기준점 설정 버튼"] --> B["현재 카메라 Pose로<br/>기준 위치·방향 저장"]
-    B --> C["필기 영역 터치"]
-    C --> D["스마트폰 이동:<br/>3D 카메라 위치 수집"]
-    D --> E["거리 조건 검사 및<br/>3D → 2D 투영"]
-    E --> F["Canvas에 2D 획 표시"]
-    F --> G{"필기 지속?"}
-    G -->|"예"| D
-    G -->|"터치 해제"| H["획 경계 기록"]
-    H --> I{"다음 획?"}
-    I -->|"예"| C
-    I -->|"필기 완료"| J["인식 버튼"]
-    J --> K["Bitmap → PNG / Base64<br/>Flask → PaddleOCR"]
-    K --> L["인식 결과 표시"]
+flowchart LR
+    subgraph Input["① 필기 입력"]
+        direction TB
+        A["기준 자세 저장"] --> B["터치 중 스마트폰 이동<br/>3D 위치 수집"]
+        B --> C["터치 해제<br/>획 경계 기록"]
+        C -->|"다음 획"| B
+    end
+    subgraph Preview["② 실시간 투영"]
+        direction TB
+        D["거리 필터 · 직교 투영"] --> E["Canvas에 2D 획 표시"]
+    end
+    subgraph OCR["③ 문자 인식"]
+        direction TB
+        F["인식 버튼<br/>PNG · Base64"] --> G["Flask · PaddleOCR"]
+        G --> H["Android 결과 표시"]
+    end
+    B --> D
+    C -->|"필기 완료"| F
 ```
 
 좌표 수집과 2D 미리보기는 ARCore 프레임 갱신 중 이루어집니다. **터치 해제 자체가 OCR 호출 조건은 아니며**, 인식 버튼을 누를 때 현재 Canvas 이미지를 전송합니다.
