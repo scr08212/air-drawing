@@ -17,7 +17,7 @@ import java.util.Vector;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 34)
-public class TestProjectorTest {
+public class ReferencePoseProjectorTest {
     private static final float EPSILON = 0.0001f;
 
     private static Point3F p(float x, float y, float z) {
@@ -36,7 +36,7 @@ public class TestProjectorTest {
     @Test
     public void alignedBasisSubtractsOriginAndDiscardsDepth() {
         // Constructor maps +Y -> +Y and +Z -> +Z, so R is identity.
-        Vector<PointF> result = TestProjector.project(
+        Vector<PointF> result = ReferencePoseProjector.project(
                 points(p(3, 4, 5), p(5, 1, 100), p(5, 1, -50)),
                 p(3, 4, 5), p(0, 1, 0), p(0, 0, 1));
 
@@ -49,7 +49,7 @@ public class TestProjectorTest {
     @Test
     public void nontrivialBasisRotatesAxesBeforeXYProjection() {
         // Rotation(+Y, +Z, +X, +Y) maps +Y to +X and +Z to +Y.
-        Vector<PointF> result = TestProjector.project(
+        Vector<PointF> result = ReferencePoseProjector.project(
                 points(p(0, 1, 0), p(0, 0, 1), p(0, -1, 0), p(1, 0, 0)),
                 p(0, 0, 0), p(1, 0, 0), p(0, 1, 0));
 
@@ -61,10 +61,10 @@ public class TestProjectorTest {
 
     @Test
     public void translatingOriginAndTrajectoryTogetherDoesNotChangeOutput() {
-        Vector<PointF> original = TestProjector.project(
+        Vector<PointF> original = ReferencePoseProjector.project(
                 points(p(0, 1, 0), p(0, 0, 1)),
                 p(0, 0, 0), p(1, 0, 0), p(0, 1, 0));
-        Vector<PointF> translated = TestProjector.project(
+        Vector<PointF> translated = ReferencePoseProjector.project(
                 points(p(10, -3, 7), p(10, -4, 8)),
                 p(10, -4, 7), p(1, 0, 0), p(0, 1, 0));
 
@@ -76,14 +76,14 @@ public class TestProjectorTest {
 
     @Test
     public void negativeCoordinatesDoNotReverseSignsWithAlignedBasis() {
-        Vector<PointF> result = TestProjector.project(
+        Vector<PointF> result = ReferencePoseProjector.project(
                 points(p(-2, -3, -4)), p(0, 0, 0), p(0, 1, 0), p(0, 0, 1));
         assertPoint(result.get(0), -2, -3);
     }
 
     @Test
     public void emptyTrajectoryReturnsNoProjectedPoints() {
-        Vector<PointF> result = TestProjector.project(
+        Vector<PointF> result = ReferencePoseProjector.project(
                 points(), p(0, 0, 0), p(0, 1, 0), p(0, 0, 1));
         assertTrue(result.isEmpty());
     }

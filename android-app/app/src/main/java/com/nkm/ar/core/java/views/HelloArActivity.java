@@ -77,7 +77,7 @@ import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
-import com.nkm.ar.core.java.utils.projectors.TestProjector;
+import com.nkm.ar.core.java.utils.projectors.ReferencePoseProjector;
 import com.nkm.ar.core.java.views.helloar.R;
 
 import java.io.ByteArrayOutputStream;
@@ -717,7 +717,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       Vector<Point3F> temp = new Vector<>();
       temp.add(new Point3F(tx, ty, tz));
 
-      var cursorPos = TestProjector.project(temp, origin, originDir, originRight);
+      var cursorPos = ReferencePoseProjector.project(temp, origin, originDir, originRight);
       if(!cursorPos.isEmpty())
         projectionCanvasView.setCursorPos(cursorPos.get(0));
     }
@@ -739,7 +739,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       if(distance >= 0.00001f)
       {
         points.add(new Point3F(tx, ty, tz));
-        projectedPoints = TestProjector.project(points, origin, originDir, originRight);
+        projectedPoints = ReferencePoseProjector.project(points, origin, originDir, originRight);
       }
     }
     projectionCanvasView.updateCanvas(projectedPoints, breakPoints);
