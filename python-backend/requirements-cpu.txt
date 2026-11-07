@@ -1,0 +1,19 @@
+# CPU OCR server environment (Python 3.11 / Ubuntu 22.04).
+# Direct dependency versions mirror the successful real-model CI setup.
+# Install with: python -m pip install -r python-backend/requirements-cpu.txt
+# This is the Flask/PaddleOCR server environment, not the full experimental
+# requirements.txt snapshot or the optional paper/image-test environment.
+#
+# First model initialization may download model files; internet is required
+# unless the appropriate models are already cached.
+Flask==3.1.1
+pyngrok==7.2.9
+paddlepaddle==3.1.0
+paddleocr==3.1.0
+paddlex==3.1.1
+langchain==0.3.26
+langchain-community==0.3.27
+langchain-core==0.3.67
+langchain-openai==0.3.27
+numpy==2.2.6
+Pillow==11.2.1
