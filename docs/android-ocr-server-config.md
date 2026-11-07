@@ -10,7 +10,32 @@
 - Android Studio/SDK와 Java 17이 필요합니다. **실제 공중 필기에는 ARCore 지원 Android 실기기**가 필요합니다.
 - 아래 명령은 별도 언급이 없다면 저장소 루트에서 시작합니다.
 
-개발 PC에서 서버를 실행합니다.
+기존 `python-backend/requirements.txt`는 여러 실험용·GPU 패키지가 섞인 목록입니다. **CPU 서버를 실행하려면** 별도 [requirements-cpu.txt](../python-backend/requirements-cpu.txt)를 사용하세요.
+
+**Linux (Python 3.11, CPU 환경)**
+
+```bash
+python3.11 -m venv python-backend/.venv
+source python-backend/.venv/bin/activate
+python -m pip install -r python-backend/requirements-cpu.txt
+python -m pip check
+export OCR_DEVICE=cpu OMP_NUM_THREADS=1
+```
+
+**Windows PowerShell (설치 명령 예시)**
+
+```powershell
+py -3.11 -m venv python-backend/.venv
+.\python-backend\.venv\Scripts\Activate.ps1
+python -m pip install -r python-backend/requirements-cpu.txt
+python -m pip check
+$env:OCR_DEVICE = "cpu"
+$env:OMP_NUM_THREADS = "1"
+```
+
+위 의존성 조합은 **Ubuntu 22.04 / Python 3.11 / CPU**에서 검증된 조합을 기준으로 합니다. Windows와 기타 운영체제에서의 호환성은 별도로 확인해야 합니다. OCR 모델의 첫 실행에는 모델 파일 다운로드가 필요할 수 있습니다.
+
+가상환경이 활성화된 터미널에서 서버를 실행합니다.
 
 ```bash
 python python-backend/server/app.py
