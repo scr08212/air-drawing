@@ -77,7 +77,7 @@ import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
-import com.nkm.ar.core.java.utils.projectors.TestProjector;
+import com.nkm.ar.core.java.utils.projectors.ReferencePoseProjector;
 import com.nkm.ar.core.java.views.helloar.R;
 
 import java.io.ByteArrayOutputStream;
@@ -99,9 +99,9 @@ import retrofit2.Response;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3D model.
  */
-public class HelloArActivity extends AppCompatActivity implements SampleRender.Renderer {
+public class AirWritingActivity extends AppCompatActivity implements SampleRender.Renderer {
 
-  private static final String TAG = HelloArActivity.class.getSimpleName();
+  private static final String TAG = AirWritingActivity.class.getSimpleName();
 
   private static final String SEARCHING_PLANE_MESSAGE = "카메라를 통해 특징점 찾는중...";
   private static final String WAITING_FOR_TAP_MESSAGE = "공중에서 글씨를 써보세요.";
@@ -236,11 +236,11 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     saveCSVButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-        boolean success = saver.savePointsToCsv(HelloArActivity.this, "ar_camera_poses.csv", points);
+        boolean success = saver.savePointsToCsv(AirWritingActivity.this, "ar_camera_poses.csv", points);
         if (success) {
-          Toast.makeText(HelloArActivity.this, "데이터가 저장되었습니다!", Toast.LENGTH_SHORT).show();
+          Toast.makeText(AirWritingActivity.this, "데이터가 저장되었습니다!", Toast.LENGTH_SHORT).show();
         } else {
-          Toast.makeText(HelloArActivity.this, "데이터 저장 실패!", Toast.LENGTH_SHORT).show();
+          Toast.makeText(AirWritingActivity.this, "데이터 저장 실패!", Toast.LENGTH_SHORT).show();
         }
       }
     });
@@ -251,10 +251,10 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         projectionCanvasView.setShowCursor(false);
 
         Bitmap bmp = projectionCanvasView.getBitmap();
-        String tempImagePath = OcrPreviewCache.save(HelloArActivity.this, bmp);
+        String tempImagePath = OcrPreviewCache.save(AirWritingActivity.this, bmp);
         String imageB64 = encodeToBase64(bmp);
 
-        OcrRequestFlow.recognizeAndShow(HelloArActivity.this, imageB64, tempImagePath);
+        OcrRequestFlow.recognizeAndShow(AirWritingActivity.this, imageB64, tempImagePath);
       }
     });
 
@@ -275,7 +275,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         setOriginRequested = true;
 
         // UI 피드백 제공 (선택 사항)
-        messageSnackbarHelper.showMessage(HelloArActivity.this, "기준점 설정 요청됨. 카메라 프레임 업데이트 시 설정됩니다.");
+        messageSnackbarHelper.showMessage(AirWritingActivity.this, "기준점 설정 요청됨. 카메라 프레임 업데이트 시 설정됩니다.");
       }
     });
 
@@ -706,7 +706,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       originRight = new Point3F(-xAxis[0], -xAxis[1], -xAxis[2]);
 
       setOriginRequested = false;
-      runOnUiThread(() -> messageSnackbarHelper.showMessage(HelloArActivity.this, "기준점 설정 완료!"));
+      runOnUiThread(() -> messageSnackbarHelper.showMessage(AirWritingActivity.this, "기준점 설정 완료!"));
     }
 
     if(origin != null){
@@ -717,7 +717,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       Vector<Point3F> temp = new Vector<>();
       temp.add(new Point3F(tx, ty, tz));
 
-      var cursorPos = TestProjector.project(temp, origin, originDir, originRight);
+      var cursorPos = ReferencePoseProjector.project(temp, origin, originDir, originRight);
       if(!cursorPos.isEmpty())
         projectionCanvasView.setCursorPos(cursorPos.get(0));
     }
@@ -739,7 +739,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       if(distance >= 0.00001f)
       {
         points.add(new Point3F(tx, ty, tz));
-        projectedPoints = TestProjector.project(points, origin, originDir, originRight);
+        projectedPoints = ReferencePoseProjector.project(points, origin, originDir, originRight);
       }
     }
     projectionCanvasView.updateCanvas(projectedPoints, breakPoints);

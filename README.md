@@ -42,7 +42,7 @@
 | **필기 이미지 처리** | 2D 좌표 렌더링, Bitmap 생성, Base64 인코딩 및 서버 요청 연동 |
 | **OCR 백엔드** | Flask API, 필기 영역 검출·크롭·정규화, PaddleOCR 추론 및 결과 응답 |
 
-**핵심 소스:** [ARCore 필기 입력](android-app/app/src/main/java/com/nkm/ar/core/java/views/HelloArActivity.java) · [직교 투영](android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java) · [이미지 전처리](python-backend/model/utils.py) · [Flask 서버](python-backend/server/app.py)
+**핵심 소스:** [ARCore 필기 입력](android-app/app/src/main/java/com/nkm/ar/core/java/views/AirWritingActivity.java) · [직교 투영](android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/ReferencePoseProjector.java) · [이미지 전처리](python-backend/model/utils.py) · [Flask 서버](python-backend/server/app.py)
 
 ## Engineering Challenges & Decisions
 
@@ -62,7 +62,7 @@
 
 **결과:** 최종 앱에서 정상적인 방향의 2D 필기 이미지를 생성하고 이를 OCR 입력으로 사용했습니다.
 
-[투영 알고리즘 코드](android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/TestProjector.java) · [설계 및 좌표 변환 상세](docs/architecture.md)
+[투영 알고리즘 코드](android-app/app/src/main/java/com/nkm/ar/core/java/utils/projectors/ReferencePoseProjector.java) · [설계 및 좌표 변환 상세](docs/architecture.md)
 
 ## System Architecture
 

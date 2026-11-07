@@ -6,7 +6,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import java.util.Vector;
 
-public class TestProjector {
+public class ReferencePoseProjector {
     public static Vector<PointF> project(Vector<Point3F> points3D, Point3F origin, Point3F originDir, Point3F originRight) {
         Vector3D originVec = new Vector3D(origin.x, origin.y, origin.z);
         Vector3D originDirVec = new Vector3D(originDir.x, originDir.y, originDir.z);
