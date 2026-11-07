@@ -67,23 +67,19 @@
 
 ### 로컬 CPU 백엔드 개발 환경
 
-저장소 루트에서 **Python 3.11 가상환경**을 만들고 아래처럼 CI에서 사용한 주요 패키지 조합을 설치합니다. Linux에서 성공한 CI 조합이며 **Windows 또는 모든 시스템에 대한 호환성은 별도 확인이 필요합니다**.
+저장소 루트에서 **Python 3.11** 가상환경을 만들고, 실제 CPU 모델 실행에 사용된 의존성 조합을 [requirements-cpu.txt](../python-backend/requirements-cpu.txt)로 설치합니다. 이 조합은 Ubuntu 22.04에서 검증했으며 다른 운영체제의 호환성은 별도로 확인해야 합니다.
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
+python3.11 -m venv python-backend/.venv
+source python-backend/.venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install \
-  "Flask==3.1.1" "pyngrok==7.2.9" \
-  "paddlepaddle==3.1.0" "paddleocr==3.1.0" "paddlex==3.1.1" \
-  "langchain==0.3.26" "langchain-community==0.3.27" \
-  "langchain-core==0.3.67" "langchain-openai==0.3.27" \
-  "numpy==2.2.6" "pillow==11.2.1"
+python -m pip install -r python-backend/requirements-cpu.txt
 python -m pip check
+export OCR_DEVICE=cpu OMP_NUM_THREADS=1
 python python-backend/server/app.py
 ```
 
-실제 CI는 추가로 테스트 이미지 추출용 **PyMuPDF 1.26.6** 등을 설치합니다. 현재 [`python-backend/requirements.txt`](../python-backend/requirements.txt)에는 GPU/OS별 패키지와 여러 실험용 의존성이 함께 있어 **CPU 최소 실행 환경의 검증된 설치 명세로 바로 사용하지 않습니다.** 가장 정확한 의존성 설치 명령은 [실제 CI 워크플로](../.github/workflows/android-flask-e2e.yml)를 참조하세요.
+논문 이미지 추출을 포함한 CI 검증은 테스트용 **PyMuPDF 1.26.6** 등을 추가 설치합니다. GPU 실험용 패키지를 포함한 기존 `python-backend/requirements.txt`는 CPU 서버 설치에 사용하지 않습니다. 자동화 테스트의 자세한 설치·실행 단계는 [E2E 워크플로](../.github/workflows/android-flask-e2e.yml)에서 확인할 수 있습니다.
 
 ### Android 연결
 
