@@ -8,6 +8,8 @@ on:
       - "python-backend/server/**"
       - "python-backend/model/**"
       - "python-backend/tests/warmup_live_backend.py"
+      - "python-backend/tests/extract_paper_figures.py"
+      - "논문_*.pdf"
   workflow_dispatch:
 
 permissions:
@@ -51,7 +53,8 @@ jobs:
             "langchain-core==0.3.67" \
             "langchain-openai==0.3.27" \
             "numpy==2.2.6" \
-            "pillow==11.2.1"
+            "pillow==11.2.1" \
+            "PyMuPDF==1.26.6"
           python -m pip check
       - name: Generate non-sensitive identical Android and backend fixture
         run: |
@@ -66,6 +69,11 @@ jobs:
           shutil.copyfile("ci-artifacts/sample.png", dest)
           print("Created generated HELLO 123 fixture for both endpoints")
           PY
+      - name: Extract original paper handwriting for Android E2E fixture
+        run: |
+          python python-backend/tests/extract_paper_figures.py
+          cp ci-paper-figures/p06-image03-01.png android-app/app/src/androidTest/assets/paper_hello.png
+          test -s android-app/app/src/androidTest/assets/paper_hello.png
       - name: Run live Android -> Flask -> PaddleOCR -> UI instrumentation test
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -82,13 +90,14 @@ jobs:
             python python-backend/tests/warmup_live_backend.py
             chmod +x android-app/gradlew
             ./android-app/gradlew --no-daemon -p android-app connectedDebugAndroidTest -PocrBaseUrl=http://10.0.2.2:5000/
-      - name: Upload instrumentation test and synthetic OCR evidence
+      - name: Upload instrumentation results and OCR fixtures
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-flask-paddleocr-e2e
           path: |
             ci-artifacts/
+            ci-paper-figures/p06-image03-01.png
             android-app/app/build/outputs/androidTest-results/
             android-app/app/build/reports/androidTests/
           if-no-files-found: ignore
