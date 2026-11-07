@@ -20,8 +20,20 @@ public final class OcrRequestFlow {
     private OcrRequestFlow() {}
 
     public static void recognizeAndShow(Activity activity, String imageBase64, String imagePath) {
-        RetrofitClient.getInstance()
-                .predictImage(Collections.singletonMap("image_base64", imageBase64))
+        if (!RetrofitClient.isConfigured()) {
+            openResult(activity, "OCR 서버 주소가 설정되지 않았습니다", imagePath);
+            return;
+        }
+        final Call<OcrResponse> pending;
+        try {
+            pending = RetrofitClient.getInstance()
+                    .predictImage(Collections.singletonMap("image_base64", imageBase64));
+        } catch (IllegalStateException | IllegalArgumentException error) {
+            // Do not expose internal URLs or exception contents to the user or logs.
+            openResult(activity, "OCR 서버 설정을 확인해 주세요", imagePath);
+            return;
+        }
+        pending
                 .enqueue(new Callback<OcrResponse>() {
                     @Override
                     public void onResponse(Call<OcrResponse> call, Response<OcrResponse> response) {
@@ -35,7 +47,7 @@ public final class OcrRequestFlow {
 
                     @Override
                     public void onFailure(Call<OcrResponse> call, Throwable error) {
-                        openResult(activity, "네트워크 오류", imagePath);
+                        openResult(activity, "OCR 서버에 연결할 수 없습니다", imagePath);
                     }
                 });
     }
