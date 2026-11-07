@@ -105,7 +105,15 @@ flowchart LR
 
 **필요 환경:** Android Studio/SDK, Java 17, Python 3.11, Flask 및 PaddleOCR 실행에 필요한 Python 패키지. 실제 공중 필기에는 **ARCore 지원 Android 실기기**가 필요합니다.
 
-1. Python 가상환경을 준비하고 현재 서버 코드에 필요한 Flask/PaddleOCR 의존성을 설치합니다. `python-backend/requirements.txt`에는 실험용·운영체제별 패키지가 섞여 있으므로 사용하는 CPU/GPU 환경에 맞춰 의존성을 선택해야 합니다.
+1. Python 3.11 가상환경을 준비하고 서버 의존성을 설치합니다. 아래는 **Linux CPU 환경** 예시이며, 다른 운영체제의 설정과 자세한 안내는 [서버 주소 설정 가이드](docs/android-ocr-server-config.md)를 참고하세요.
+
+   ```bash
+   python3.11 -m venv python-backend/.venv
+   source python-backend/.venv/bin/activate
+   python -m pip install -r python-backend/requirements-cpu.txt
+   ```
+
+   `python-backend/requirements.txt`는 GPU·실험용 패키지가 혼재한 기존 목록이므로 일반적인 CPU 설치에는 사용하지 않습니다.
 2. 저장소 루트에서 OCR 서버를 실행합니다.
 
    ```bash
