@@ -4,6 +4,7 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -60,14 +61,14 @@ public class OcrPipelineE2eTest {
         byte[] pngBytes = buffer.toByteArray();
         String base64Image = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
 
-        File cacheImage = new File(appContext.getCacheDir(), "e2e-" + assetName);
+        File cacheImage = File.createTempFile("ocr-preview-", ".png", appContext.getCacheDir());
         try (FileOutputStream file = new FileOutputStream(cacheImage)) {
             file.write(pngBytes);
         }
 
+        // The host screen does not consume the preview; the OCR result screen does.
         Intent hostIntent = new Intent(appContext, ResultActivity.class);
         hostIntent.putExtra("result_char", "PENDING");
-        hostIntent.putExtra("image_path", cacheImage.getAbsolutePath());
 
         try (ActivityScenario<ResultActivity> scenario = ActivityScenario.launch(hostIntent)) {
             // This is the same production network+navigation code used in HelloArActivity.
@@ -93,6 +94,11 @@ public class OcrPipelineE2eTest {
                 if (error != null) throw error;
                 assertNotNull("The submitted image should be visible", ((ImageView) view).getDrawable());
             });
+            assertFalse("The consumed OCR preview must be deleted", cacheImage.exists());
+            assertFalse(
+                    "OCR output must not be written to legacy SharedPreferences",
+                    appContext.getSharedPreferences("RecognizedTextPrefs", Context.MODE_PRIVATE)
+                            .getAll().containsValue(expected));
         } finally {
             // Avoid leaving even test image bytes in the device cache.
             cacheImage.delete();

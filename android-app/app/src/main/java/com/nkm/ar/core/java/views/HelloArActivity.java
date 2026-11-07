@@ -50,6 +50,8 @@ import com.google.ar.core.TrackingState;
 import com.nkm.ar.core.java.network.OcrResponse;
 import com.nkm.ar.core.java.network.OcrRequestFlow;
 import com.nkm.ar.core.java.utils.CsvPointSaver;
+import com.nkm.ar.core.java.utils.OcrPreviewCache;
+import com.nkm.ar.core.java.utils.OcrPrivacyCleanup;
 import com.nkm.ar.core.java.datatypes.Point3F;
 import com.nkm.ar.core.java.utils.helpers.CameraPermissionHelper;
 import com.nkm.ar.core.java.utils.helpers.DepthSettings;
@@ -79,8 +81,6 @@ import com.nkm.ar.core.java.utils.projectors.TestProjector;
 import com.nkm.ar.core.java.views.helloar.R;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -209,6 +209,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    // Scrub OCR results and fixed-name previews left on disk by older builds.
+    OcrPrivacyCleanup.clearLegacyResults(this);
     setContentView(R.layout.activity_main);
     surfaceView = findViewById(R.id.surfaceview);
     displayRotationHelper = new DisplayRotationHelper(/* context= */ this);
@@ -249,7 +251,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         projectionCanvasView.setShowCursor(false);
 
         Bitmap bmp = projectionCanvasView.getBitmap();
-        String tempImagePath = saveBitmapToCache(bmp);
+        String tempImagePath = OcrPreviewCache.save(HelloArActivity.this, bmp);
         String imageB64 = encodeToBase64(bmp);
 
         OcrRequestFlow.recognizeAndShow(HelloArActivity.this, imageB64, tempImagePath);
@@ -702,8 +704,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       float[] xAxis = pos.getXAxis();
       originDir = new Point3F(-zAxis[0], -zAxis[1], -zAxis[2]);
       originRight = new Point3F(-xAxis[0], -xAxis[1], -xAxis[2]);
-      String dirDebug = "OriginDir: x: " + originDir.x + " y: " + originDir.y + " z: " + originDir.z;
-      Log.e("디버그", dirDebug);
 
       setOriginRequested = false;
       runOnUiThread(() -> messageSnackbarHelper.showMessage(HelloArActivity.this, "기준점 설정 완료!"));
@@ -818,21 +818,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       config.setInstantPlacementMode(Config.InstantPlacementMode.DISABLED);
     }
     session.configure(config);
-  }
-
-  private String saveBitmapToCache(Bitmap bmp) {
-    try {
-      String filename = "temp_drawing.png";
-      File file = new File(getCacheDir(), filename);
-      FileOutputStream out = new FileOutputStream(file);
-      bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
-      out.flush();
-      out.close();
-      return file.getAbsolutePath();
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
   }
 
   private String encodeToBase64(Bitmap bmp) {

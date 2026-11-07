@@ -3,6 +3,7 @@ package com.nkm.ar.core.java.network;
 import android.app.Activity;
 import android.content.Intent;
 
+import com.nkm.ar.core.java.utils.OcrPreviewCache;
 import com.nkm.ar.core.java.views.ResultActivity;
 
 import java.util.Collections;
@@ -41,6 +42,7 @@ public final class OcrRequestFlow {
 
     private static void openResult(Activity activity, String result, String imagePath) {
         if (activity.isFinishing() || activity.isDestroyed()) {
+            OcrPreviewCache.deleteIfOwned(activity, imagePath);
             return;
         }
         Intent intent = new Intent(activity, ResultActivity.class);

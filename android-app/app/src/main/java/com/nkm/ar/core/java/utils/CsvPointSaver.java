@@ -38,7 +38,7 @@ public class CsvPointSaver {
         // 디렉토리가 존재하는지 확인하고 없으면 생성합니다.
         if (!downloadDir.exists()) {
             if (!downloadDir.mkdirs()) { // 상위 디렉토리가 없으면 함께 생성
-                Log.e(TAG, "Downloads 디렉토리 생성 실패: " + downloadDir.getAbsolutePath());
+                Log.e(TAG, "Downloads 디렉토리 생성 실패");
                 return false;
             }
         }
@@ -60,11 +60,11 @@ public class CsvPointSaver {
             }
 
             fileWriter.flush();
-            Log.d(TAG, "CSV 파일에 성공적으로 포인트 저장: " + file.getAbsolutePath());
+            Log.d(TAG, "CSV 파일 저장 완료");
             return true;
 
         } catch (IOException e) {
-            Log.e(TAG, "CSV 파일에 포인트 저장 중 오류 발생: " + e.getMessage(), e);
+            Log.e(TAG, "CSV 파일 저장 실패");
             return false;
         } finally {
             try {
@@ -72,7 +72,7 @@ public class CsvPointSaver {
                     fileWriter.close();
                 }
             } catch (IOException e) {
-                Log.e(TAG, "파일 작성기 닫기 중 오류 발생: " + e.getMessage(), e);
+                Log.e(TAG, "CSV 파일 작성기 종료 실패");
             }
         }
     }
