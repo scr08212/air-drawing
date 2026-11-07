@@ -37,6 +37,11 @@ def predict_image():
 
     return jsonify(result)
 
+@app.errorhandler(413)
+def payload_too_large(_error):
+    return jsonify({'success': False, 'message': '', 'error': 'Request body too large'}), 413
+
+
 if __name__ == '__main__':
     if os.environ.get('ENABLE_NGROK') == '1':
         authtoken = os.environ.get('NGROK_AUTHTOKEN')
@@ -47,6 +52,3 @@ if __name__ == '__main__':
     # The shared PaddleOCR predictor is not used concurrently in this demo server.
     app.run(host='0.0.0.0', port=5000, threaded=False)
 
-@app.errorhandler(413)
-def payload_too_large(_error):
-    return jsonify({'success': False, 'message': '', 'error': 'Request body too large'}), 413
