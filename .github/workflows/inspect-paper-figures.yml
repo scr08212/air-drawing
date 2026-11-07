@@ -1,0 +1,33 @@
+name: Inspect thesis handwriting images
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inspect-paper-figures.yml"
+      - "python-backend/tests/extract_paper_figures.py"
+      - "논문_*.pdf"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PDF figure inspection dependency
+        run: python -m pip install "PyMuPDF==1.26.6"
+      - name: Extract paper figures and page renderings
+        run: python python-backend/tests/extract_paper_figures.py
+      - name: Upload paper figure candidates for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: capstone-paper-figures
+          path: ci-paper-figures/
+          if-no-files-found: error
+          retention-days: 7
